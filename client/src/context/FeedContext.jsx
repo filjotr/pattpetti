@@ -181,11 +181,11 @@ export function FeedProvider({ children }) {
       {songs[activeIndex]?.videoId && (
         <iframe
           ref={iframeRef}
-          width="1"
-          height="1"
+          width="200"
+          height="200"
           src={`https://www.youtube.com/embed/${songs[activeIndex].videoId}?autoplay=1&controls=0&disablekb=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
-          allow="autoplay"
-          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+          allow="autoplay; encrypted-media; picture-in-picture"
+          style={{ position: 'fixed', top: '-1000px', opacity: 0.01, pointerEvents: 'none', zIndex: -100 }}
           title="global-feed-audio"
         />
       )}

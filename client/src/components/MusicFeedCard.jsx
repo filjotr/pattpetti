@@ -141,6 +141,10 @@ export default function MusicFeedCard({ song, isActive, index }) {
             min="0" 
             max="100" 
             value={progress || 0}
+            onInput={(e) => {
+              e.stopPropagation();
+              handleSeek(e);
+            }}
             onChange={(e) => {
               e.stopPropagation();
               handleSeek(e);
@@ -161,8 +165,8 @@ export default function MusicFeedCard({ song, isActive, index }) {
 
       {/* Bottom Actions */}
       <div
-        className="absolute bottom-0 left-0 right-0 z-20 px-5 pointer-events-none"
-        style={{ paddingBottom: 'calc(var(--nav-height) + 16px)' }}
+        className="absolute left-0 right-0 z-20 px-5 pointer-events-none"
+        style={{ bottom: 'calc(var(--nav-height) + 10px)' }}
       >
         <div className="flex items-end justify-end pointer-events-auto">
           {/* Right: action buttons */}

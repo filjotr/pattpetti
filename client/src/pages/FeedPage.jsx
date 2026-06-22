@@ -59,6 +59,20 @@ export default function FeedPage() {
     return () => observer.disconnect();
   }, [songs, nextPageToken, loading]);
 
+  // Auto-scroll when activeIndex changes programmatically (e.g. song ends)
+  useEffect(() => {
+    if (containerRef.current && !isRestoringRef.current) {
+      const el = containerRef.current.querySelector(`[data-idx="${activeIndex}"]`);
+      if (el) {
+        const diff = Math.abs(containerRef.current.scrollTop - el.offsetTop);
+        // If the card is more than half a screen away, it means the index changed programmatically
+        if (diff > window.innerHeight / 2) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }
+  }, [activeIndex]);
+
   return (
     <div className="relative" style={{ background: '#0F172A' }}>
       {/* Feed */}
