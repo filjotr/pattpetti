@@ -4,20 +4,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [show, setShow] = useState(false);
+  const [show, setShow] = useState(true); // Always show initially on mobile
 
   useEffect(() => {
+    // Hide if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      setShow(false);
+      return;
+    }
+
     const handler = (e) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Stash the event so it can be triggered later
       setDeferredPrompt(e);
       setShow(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
-
-    // If app is already installed
     window.addEventListener('appinstalled', () => {
       setShow(false);
       setDeferredPrompt(null);
@@ -27,14 +29,20 @@ export default function InstallPrompt() {
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setShow(false);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShow(false);
+      }
+      setDeferredPrompt(null);
+    } else {
+      // Fallback: tell user to use browser menu
+      alert("Please tap the 3-dots menu (⋮) in your browser and select 'Add to Home screen' or 'Install app' to install Listen With Friends!");
     }
-    setDeferredPrompt(null);
   };
+
+  if (window.innerWidth > 768) return null; // Don't show on desktop
 
   return (
     <AnimatePresence>
