@@ -16,6 +16,7 @@ import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import AdminPage from './pages/AdminPage';
 import NotFoundPage from './pages/NotFoundPage';
+import InstallPrompt from './components/InstallPrompt';
 
 function AuthGuard({ children }) {
   const { user, loading } = useAuth();
@@ -44,6 +45,8 @@ function Layout() {
         <div className="glow-1" />
         <div className="glow-2" />
       </div>
+
+      <InstallPrompt />
 
       <Routes>
         {/* Public */}
