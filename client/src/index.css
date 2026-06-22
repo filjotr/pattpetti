@@ -50,8 +50,8 @@ body {
 }
 
 #root {
-  min-height: 100dvh;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ============================================
@@ -273,8 +273,8 @@ body {
    FEED CARDS
    ============================================ */
 .feed-container {
-  height: 100dvh;
   height: 100vh;
+  height: 100dvh;
   overflow-y: scroll;
   scroll-snap-type: y mandatory;
   scrollbar-width: none;
@@ -284,8 +284,8 @@ body {
 .feed-container::-webkit-scrollbar { display: none; }
 
 .feed-card {
-  height: 100dvh;
   height: 100vh;
+  height: 100dvh;
   scroll-snap-align: start;
   scroll-snap-stop: always;
   position: relative;
