@@ -144,11 +144,26 @@ export function FeedProvider({ children }) {
     if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func: 'seekTo', args: [Math.floor(seconds), true] }),
-        'https://www.youtube.com'
+        '*'
       );
       setElapsed(seconds);
     }
   }, []);
+
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      const currentSong = songs[activeIndex];
+      if (currentSong) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentSong.title || 'Unknown Song',
+          artist: currentSong.channel || 'Unknown Artist',
+          artwork: [{ src: currentSong.thumbnail || '', sizes: '512x512', type: 'image/jpeg' }]
+        });
+        navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+        navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+      }
+    }
+  }, [activeIndex, songs]);
 
   return (
     <FeedContext.Provider value={{

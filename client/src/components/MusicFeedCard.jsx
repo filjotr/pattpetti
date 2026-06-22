@@ -116,7 +116,7 @@ export default function MusicFeedCard({ song, isActive, index }) {
           <VinylRecord
             thumbnail={song?.thumbnail}
             isPlaying={isPlaying && isActive}
-            size={240}
+            size={window.innerHeight < 700 ? 180 : 240}
           />
           {/* Play/Pause overlay icon */}
           <div 
@@ -161,8 +161,8 @@ export default function MusicFeedCard({ song, isActive, index }) {
 
       {/* Bottom Actions */}
       <div
-        className="absolute bottom-0 left-0 right-0 z-20 px-5 pb-28 pointer-events-none"
-        style={{ paddingBottom: 'calc(72px + 24px)' }}
+        className="absolute bottom-0 left-0 right-0 z-20 px-5 pointer-events-none"
+        style={{ paddingBottom: 'calc(var(--nav-height) + 16px)' }}
       >
         <div className="flex items-end justify-end pointer-events-auto">
           {/* Right: action buttons */}
