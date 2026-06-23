@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { FeedProvider } from './context/FeedContext';
@@ -74,7 +74,7 @@ function Layout() {
 }
 
 function BottomNavWrapper() {
-  const { pathname } = window.location;
+  const { pathname } = useLocation();
   // Hide in full-room view (but show on /rooms list)
   if (pathname.startsWith('/room/')) return null;
   return <BottomNav />;
@@ -82,7 +82,7 @@ function BottomNavWrapper() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AuthProvider>
         <SocketProvider>
           <FeedProvider>
@@ -94,6 +94,6 @@ export default function App() {
           </FeedProvider>
         </SocketProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
