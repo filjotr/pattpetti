@@ -28,6 +28,8 @@ export function FeedProvider({ children }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [baseElapsed, setBaseElapsed] = useState(0);
+  const [startTime, setStartTime] = useState(Date.now());
   const iframeRef = useRef(null);
   const intervalRef = useRef(null);
   const togglePlay = useCallback(() => {
@@ -43,18 +45,31 @@ export function FeedProvider({ children }) {
   }, [isPlaying]);
 
   useEffect(() => {
+    if (isPlaying) {
+      setStartTime(Date.now());
+    } else {
+      setBaseElapsed(elapsed);
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    setBaseElapsed(0);
+    setStartTime(Date.now());
     setElapsed(0);
     setIsPlaying(true);
   }, [activeIndex]);
 
   useEffect(() => {
     if (isPlaying) {
-      intervalRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+      intervalRef.current = setInterval(() => {
+        const newElapsed = baseElapsed + (Date.now() - startTime) / 1000;
+        setElapsed(newElapsed);
+      }, 1000);
     } else {
       clearInterval(intervalRef.current);
     }
     return () => clearInterval(intervalRef.current);
-  }, [isPlaying]);
+  }, [isPlaying, baseElapsed, startTime]);
 
   // Auto-play next song when current finishes
   useEffect(() => {
@@ -63,9 +78,9 @@ export function FeedProvider({ children }) {
       const total = parseDuration(currentSong.duration);
       if (total > 0 && elapsed >= total) {
         if (activeIndex < songs.length - 1) {
-          setActiveIndex(activeIndex + 1);
+          setActiveIndex(prev => prev + 1);
         } else if (nextPageToken && !loading) {
-          loadFeed(false).then(() => setActiveIndex(activeIndex + 1));
+          loadFeed(false).then(() => setActiveIndex(prev => prev + 1));
         }
       }
     }
@@ -146,6 +161,8 @@ export function FeedProvider({ children }) {
         JSON.stringify({ event: 'command', func: 'seekTo', args: [Math.floor(seconds), true] }),
         '*'
       );
+      setBaseElapsed(seconds);
+      setStartTime(Date.now());
       setElapsed(seconds);
     }
   }, []);
@@ -161,6 +178,12 @@ export function FeedProvider({ children }) {
         });
         navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
         navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+          setActiveIndex(prev => prev + 1);
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+          setActiveIndex(prev => Math.max(0, prev - 1));
+        });
       }
     }
   }, [activeIndex, songs]);
