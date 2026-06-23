@@ -20,8 +20,11 @@ router.get('/search', async (req, res) => {
     const { q } = req.query;
     if (!q) return res.json({ songs: [] });
 
-    const results = await ytSearch(`${q} song`);
-    const songs = (results.videos || []).slice(0, 15).map(v => parseSong(v, 'Search'));
+    const results = await ytSearch(`${q} song audio`);
+    let videos = results.videos || [];
+    // Filter out long compilation videos and super short shorts (1.5 min to 7 mins)
+    videos = videos.filter(v => v.seconds && v.seconds >= 90 && v.seconds <= 420);
+    const songs = videos.slice(0, 15).map(v => parseSong(v, 'Search'));
 
     res.json({ songs });
   } catch (err) {
@@ -37,19 +40,21 @@ router.get('/trending', async (req, res) => {
     
     // Create an array of possible queries to randomize the results
     const queries = [
-      `${g} hit songs 2024`,
-      `${g} trending music`,
-      `${g} top tracks`,
-      `best ${g} songs ever`,
-      `${g} latest music video`,
-      `${g} popular songs`
+      `${g} new single music video 2024`,
+      `${g} latest hit song audio 2024`,
+      `latest ${g} songs 2024 single`,
+      `new ${g} tracks official audio`,
+      `${g} new songs this week`
     ];
     
     const randomQuery = queries[Math.floor(Math.random() * queries.length)];
     const results = await ytSearch(randomQuery);
     
-    // Shuffle the results to get a random mix
     let videos = results.videos || [];
+    // Filter out long compilation videos and super short shorts (1.5 min to 7 mins)
+    videos = videos.filter(v => v.seconds && v.seconds >= 90 && v.seconds <= 420);
+
+    // Shuffle the results to get a random mix
     for (let i = videos.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [videos[i], videos[j]] = [videos[j], videos[i]];

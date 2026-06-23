@@ -17,6 +17,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [bio, setBio] = useState('');
   const [username, setUsername] = useState('');
+  const [interests, setInterests] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export default function ProfilePage() {
       setProfile(me);
       setBio(me?.bio || '');
       setUsername(me?.username || '');
+      setInterests(me?.interests || []);
     } else {
       fetch(`${API_BASE_URL}/social/profile/${userId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -38,6 +40,15 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       await updateProfile({ username, bio });
+      await fetch(`${API_BASE_URL}/auth/interests`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ interests }),
+      });
+      if (me) me.interests = interests;
       setEditing(false);
     } catch (err) {
       alert(err.message);
@@ -105,6 +116,24 @@ export default function ProfilePage() {
               placeholder="Bio (optional)"
               maxLength={120}
             />
+            <div className="flex flex-wrap justify-center gap-2 my-3">
+              {MUSIC_INTERESTS.map(m => {
+                const isSel = interests.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      if (isSel) setInterests(interests.filter(i => i !== m.id));
+                      else setInterests([...interests, m.id]);
+                    }}
+                    className={`genre-pill ${isSel ? 'selected' : ''}`}
+                    style={{ padding: '6px 12px', fontSize: 12 }}
+                  >
+                    {m.flag} {m.label}
+                  </button>
+                );
+              })}
+            </div>
             <div className="flex gap-3">
               <button onClick={() => setEditing(false)} className="btn-ghost flex-1" style={{ borderRadius: 10 }}>Cancel</button>
               <button onClick={handleSave} disabled={saving} className="btn-primary flex-1" style={{ borderRadius: 10 }}>
