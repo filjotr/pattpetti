@@ -137,13 +137,7 @@ export default function MusicFeedCard({ song, isActive, index }) {
 
         <WaveformAnim isPlaying={isPlaying && isActive} />
 
-        {/* Progress bar and Timer */}
-        <div className="w-[90%] max-w-md mt-4 flex flex-col items-center">
-          <div className="flex justify-between items-center w-full px-8" style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
-            <span>{formatTime(displayElapsed)}</span>
-            <span>{formatDuration(song?.duration)}</span>
-          </div>
-        </div>
+        {/* Progress bar and Timer removed as requested */}
       </div>
 
       {/* Bottom Actions */}
