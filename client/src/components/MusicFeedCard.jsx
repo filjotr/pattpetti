@@ -117,6 +117,12 @@ export default function MusicFeedCard({ song, isActive, index }) {
             thumbnail={song?.thumbnail}
             isPlaying={isPlaying && isActive}
             size={window.innerHeight < 700 ? 180 : 240}
+            progress={progress}
+            onSeek={(newProgress) => {
+              if (!isActive || totalSeconds <= 0) return;
+              const newTime = (newProgress / 100) * totalSeconds;
+              seekTo(newTime);
+            }}
           />
           {/* Play/Pause overlay icon */}
           <div 
@@ -132,31 +138,8 @@ export default function MusicFeedCard({ song, isActive, index }) {
         <WaveformAnim isPlaying={isPlaying && isActive} />
 
         {/* Progress bar and Timer */}
-        <div className="w-[90%] max-w-md mt-8 flex flex-col" 
-             onClick={(e) => e.stopPropagation()} 
-             onPointerDown={(e) => e.stopPropagation()}
-        >
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={progress || 0}
-            onInput={(e) => {
-              e.stopPropagation();
-              handleSeek(e);
-            }}
-            onChange={(e) => {
-              e.stopPropagation();
-              handleSeek(e);
-            }}
-            style={{ 
-              height: 4, borderRadius: 2, cursor: 'pointer',
-              accentColor: 'var(--primary)',
-              touchAction: 'none'
-            }}
-            className="w-full"
-          />
-          <div className="flex justify-between items-center mt-2 w-full" style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+        <div className="w-[90%] max-w-md mt-4 flex flex-col items-center">
+          <div className="flex justify-between items-center w-full px-8" style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
             <span>{formatTime(displayElapsed)}</span>
             <span>{formatDuration(song?.duration)}</span>
           </div>
