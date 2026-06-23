@@ -13,20 +13,23 @@ export default function MusicFeedCard({ song, isActive, index }) {
   const { isPlaying, elapsed, togglePlay, seekTo } = useFeed();
   const [showComment, setShowComment] = useState(false);
   const [showListenModal, setShowListenModal] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [localProgress, setLocalProgress] = useState(0);
 
   const displayElapsed = isActive ? elapsed : 0;
   const totalSeconds = parseDuration(song?.duration);
-  const progress = totalSeconds > 0 ? Math.min((displayElapsed / totalSeconds) * 100, 100) : 0;
+  const actualProgress = totalSeconds > 0 ? Math.min((displayElapsed / totalSeconds) * 100, 100) : 0;
+  const progress = isDragging ? localProgress : actualProgress;
 
   const handleTogglePlay = () => {
     if (!isActive) return;
     togglePlay();
   };
 
-  const handleSeek = (e) => {
+  const handleSeekEnd = () => {
     if (!isActive || totalSeconds <= 0) return;
-    const val = parseFloat(e.target.value);
-    const newTime = (val / 100) * totalSeconds;
+    setIsDragging(false);
+    const newTime = (localProgress / 100) * totalSeconds;
     seekTo(newTime);
   };
 
@@ -116,7 +119,7 @@ export default function MusicFeedCard({ song, isActive, index }) {
           <VinylRecord
             thumbnail={song?.thumbnail}
             isPlaying={isPlaying && isActive}
-            size={window.innerHeight < 700 ? 180 : 240}
+            size={window.innerHeight < 700 ? 150 : (window.innerHeight < 800 ? 180 : 240)}
           />
           {/* Play/Pause overlay icon */}
           <div 
@@ -129,10 +132,12 @@ export default function MusicFeedCard({ song, isActive, index }) {
           </div>
         </motion.div>
 
-        <WaveformAnim isPlaying={isPlaying && isActive} />
+        <div className="scale-75 sm:scale-100">
+          <WaveformAnim isPlaying={isPlaying && isActive} />
+        </div>
 
         {/* Progress bar and Timer */}
-        <div className="w-[90%] max-w-md mt-8 flex flex-col" 
+        <div className="w-[90%] max-w-md mt-4 flex flex-col" 
              onClick={(e) => e.stopPropagation()} 
              onPointerDown={(e) => e.stopPropagation()}
         >
@@ -141,14 +146,13 @@ export default function MusicFeedCard({ song, isActive, index }) {
             min="0" 
             max="100" 
             value={progress || 0}
-            onInput={(e) => {
-              e.stopPropagation();
-              handleSeek(e);
+            onPointerDown={() => {
+              setIsDragging(true);
+              setLocalProgress(actualProgress);
             }}
-            onChange={(e) => {
-              e.stopPropagation();
-              handleSeek(e);
-            }}
+            onPointerUp={handleSeekEnd}
+            onTouchEnd={handleSeekEnd}
+            onChange={(e) => setLocalProgress(parseFloat(e.target.value))}
             style={{ 
               height: 4, borderRadius: 2, cursor: 'pointer',
               accentColor: 'var(--primary)',
