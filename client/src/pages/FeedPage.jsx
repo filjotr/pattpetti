@@ -7,13 +7,14 @@ import { useAuth } from '../context/AuthContext';
 import { RefreshCw, Clock } from 'lucide-react';
 
 export default function FeedPage() {
-  const { songs, loading, loadFeed, nextPageToken, activeIndex, setActiveIndex } = useFeed();
+  const { songs, loading, loadFeed, nextPageToken, activeIndex, changeTrack } = useFeed();
   const { listenInvite, acceptInvite, declineInvite } = useSocial();
   const { user } = useAuth();
   const [showChat, setShowChat] = useState(false);
   const containerRef = useRef(null);
   const loadedRef = useRef(false);
   const isRestoringRef = useRef(true);
+  const isRemoteScrollingRef = useRef(false);
 
   // Initial feed load and scroll restore
   useEffect(() => {
@@ -41,9 +42,11 @@ export default function FeedPage() {
     const observer = new IntersectionObserver(
       entries => {
         entries.forEach(entry => {
-          if (entry.isIntersecting && !isRestoringRef.current) {
+          if (entry.isIntersecting && !isRestoringRef.current && !isRemoteScrollingRef.current) {
             const idx = parseInt(entry.target.dataset.idx);
-            setActiveIndex(idx);
+            if (changeTrack && idx !== activeIndex) {
+              changeTrack(idx);
+            }
             // Load more when near end
             if (idx >= songs.length - 3 && nextPageToken && !loading) {
               loadFeed(false);
@@ -59,15 +62,16 @@ export default function FeedPage() {
     return () => observer.disconnect();
   }, [songs, nextPageToken, loading]);
 
-  // Auto-scroll when activeIndex changes programmatically (e.g. song ends)
+  // Auto-scroll when activeIndex changes programmatically (e.g. song ends or partner synced)
   useEffect(() => {
     if (containerRef.current && !isRestoringRef.current) {
       const el = containerRef.current.querySelector(`[data-idx="${activeIndex}"]`);
       if (el) {
         const diff = Math.abs(containerRef.current.scrollTop - el.offsetTop);
-        // If the card is more than half a screen away, it means the index changed programmatically
-        if (diff > window.innerHeight / 2) {
+        if (diff > 20) {
+          isRemoteScrollingRef.current = true;
           el.scrollIntoView({ behavior: 'smooth' });
+          setTimeout(() => { isRemoteScrollingRef.current = false; }, 700);
         }
       }
     }

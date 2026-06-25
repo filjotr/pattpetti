@@ -149,6 +149,19 @@ function setupSocketIO(io) {
       Room.updateOne({ code: uData.roomCode }, { $set: { currentSong: state } }).catch(()=>{});
     });
 
+    // Instant feed sync across all members in room
+    socket.on('sync-feed-state', (state) => {
+      const uData = users.get(socket.id);
+      if (!uData || !uData.roomCode) return;
+      socket.to(uData.roomCode).emit('sync-feed-state', state);
+    });
+
+    socket.on('request-feed-sync', () => {
+      const uData = users.get(socket.id);
+      if (!uData || !uData.roomCode) return;
+      socket.to(uData.roomCode).emit('request-feed-sync', { socketId: socket.id });
+    });
+
     socket.on('add-to-queue', async (song) => {
       const uData = users.get(socket.id);
       if (!uData || !uData.roomCode) return;

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { API_BASE_URL } from '../utils/config';
 import { useAuth } from './AuthContext';
 import { fetchTrendingByGenre } from '../utils/youtube';
+import { useSocket } from './SocketContext';
 
 const FeedContext = createContext();
 export const useFeed = () => useContext(FeedContext);
@@ -25,6 +26,10 @@ export function FeedProvider({ children }) {
   const [likedSongs, setLikedSongs] = useState(new Set());
   const [likeCounts, setLikeCounts] = useState({});
 
+  const { socket } = useSocket() || {};
+  const [syncRoomCode, setSyncRoomCode] = useState(null);
+  const [syncMembers, setSyncMembers] = useState([]);
+
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -32,9 +37,39 @@ export function FeedProvider({ children }) {
   const [startTime, setStartTime] = useState(Date.now());
   const iframeRef = useRef(null);
   const intervalRef = useRef(null);
-  const togglePlay = useCallback(() => {
-    setIsPlaying(prev => !prev);
-  }, []);
+
+  useEffect(() => {
+    const checkSyncUrl = () => {
+      const hashParts = window.location.hash.split('?');
+      if (hashParts.length > 1) {
+        const params = new URLSearchParams(hashParts[1]);
+        const sc = params.get('sync');
+        if (sc && sc !== syncRoomCode) {
+          setSyncRoomCode(sc.toUpperCase());
+        }
+      }
+    };
+    checkSyncUrl();
+    window.addEventListener('hashchange', checkSyncUrl);
+    return () => window.removeEventListener('hashchange', checkSyncUrl);
+  }, [syncRoomCode]);
+
+  useEffect(() => {
+    if (socket && syncRoomCode) {
+      socket.emit('join-room', { roomCode: syncRoomCode });
+      socket.emit('request-feed-sync');
+    }
+  }, [socket, syncRoomCode]);
+
+  const togglePlay = useCallback((isRemote = false) => {
+    setIsPlaying(prev => {
+      const next = !prev;
+      if (!isRemote && socket && syncRoomCode) {
+        socket.emit('sync-feed-state', { activeIndex, isPlaying: next, elapsed, timestamp: Date.now() });
+      }
+      return next;
+    });
+  }, [socket, syncRoomCode, activeIndex, elapsed]);
 
   // Stop playback when component unmounts (logout)
   useEffect(() => {
@@ -160,7 +195,7 @@ export function FeedProvider({ children }) {
     } catch {}
   };
 
-  const seekTo = useCallback((seconds) => {
+  const seekTo = useCallback((seconds, isRemote = false) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func: 'seekTo', args: [Math.floor(seconds), true] }),
@@ -169,8 +204,56 @@ export function FeedProvider({ children }) {
       setBaseElapsed(seconds);
       setStartTime(Date.now());
       setElapsed(seconds);
+      if (!isRemote && socket && syncRoomCode) {
+        socket.emit('sync-feed-state', { activeIndex, isPlaying, elapsed: seconds, timestamp: Date.now() });
+      }
     }
-  }, []);
+  }, [socket, syncRoomCode, activeIndex, isPlaying]);
+
+  const changeTrack = useCallback((newIndex, isRemote = false) => {
+    setActiveIndex(newIndex);
+    if (!isRemote && socket && syncRoomCode) {
+      socket.emit('sync-feed-state', { activeIndex: newIndex, isPlaying: true, elapsed: 0, timestamp: Date.now() });
+    }
+  }, [socket, syncRoomCode]);
+
+  useEffect(() => {
+    if (!socket || !syncRoomCode) return;
+    const handleJoined = ({ members }) => setSyncMembers((members || []).slice(0, 2));
+    const handleState = ({ members }) => setSyncMembers((members || []).slice(0, 2));
+    const handleLeft = ({ members }) => setSyncMembers((members || []).slice(0, 2));
+
+    const handleRequestSync = () => {
+      socket.emit('sync-feed-state', { activeIndex, isPlaying, elapsed, timestamp: Date.now() });
+    };
+
+    const handleSyncState = (state) => {
+      if (state.activeIndex !== undefined && state.activeIndex !== activeIndex) {
+        changeTrack(state.activeIndex, true);
+      }
+      if (state.isPlaying !== undefined && state.isPlaying !== isPlaying) {
+        setIsPlaying(state.isPlaying);
+      }
+      if (state.elapsed !== undefined) {
+        const adj = state.isPlaying ? state.elapsed + (Date.now() - (state.timestamp || Date.now())) / 1000 : state.elapsed;
+        seekTo(adj, true);
+      }
+    };
+
+    socket.on('user-joined', handleJoined);
+    socket.on('room-state', handleState);
+    socket.on('user-left', handleLeft);
+    socket.on('request-feed-sync', handleRequestSync);
+    socket.on('sync-feed-state', handleSyncState);
+
+    return () => {
+      socket.off('user-joined', handleJoined);
+      socket.off('room-state', handleState);
+      socket.off('user-left', handleLeft);
+      socket.off('request-feed-sync', handleRequestSync);
+      socket.off('sync-feed-state', handleSyncState);
+    };
+  }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, seekTo, changeTrack]);
 
   useEffect(() => {
     if ('mediaSession' in navigator) {
@@ -199,10 +282,11 @@ export function FeedProvider({ children }) {
       likedSongs, likeCounts,
       loadFeed, likeSong, fetchLikeCount,
       setSongs,
-      activeIndex, setActiveIndex,
+      activeIndex, setActiveIndex, changeTrack,
       isPlaying, setIsPlaying,
       elapsed, togglePlay,
-      seekTo
+      seekTo,
+      syncRoomCode, setSyncRoomCode, syncMembers
     }}>
       {children}
       {/* Global Audio Player for Feed */}

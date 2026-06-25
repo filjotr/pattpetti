@@ -1,38 +1,27 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, X, Music2, Check } from 'lucide-react';
+import { Users, X, Music2, Check, Copy } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocial } from '../context/SocialContext';
-import { useNavigate } from 'react-router-dom';
+import { useFeed } from '../context/FeedContext';
 import { API_BASE_URL, getAvatarUrl } from '../utils/config';
 
 export default function ListenTogetherModal({ song, onClose }) {
   const { user, token } = useAuth();
   const { sendListenInvite } = useSocial();
-  const navigate = useNavigate();
+  const { syncRoomCode, setSyncRoomCode, syncMembers } = useFeed();
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [invitedIds, setInvitedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [roomCode, setRoomCode] = useState(null);
   const [copied, setCopied] = useState(false);
 
   React.useEffect(() => {
-    if (!token || roomCode) return;
-    setCreating(true);
-    fetch(`${API_BASE_URL}/rooms/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name: `${song?.title?.slice(0, 25) || 'Music'} Room`, isPrivate: false }),
-    })
-      .then(r => r.json())
-      .then(d => {
-        if (d.room) setRoomCode(d.room.code);
-      })
-      .catch(console.error)
-      .finally(() => setCreating(false));
-  }, [token, song]);
+    if (!syncRoomCode) {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      setSyncRoomCode(code);
+    }
+  }, [syncRoomCode, setSyncRoomCode]);
 
   const searchUsers = async (q) => {
     setSearch(q);
@@ -53,41 +42,26 @@ export default function ListenTogetherModal({ song, onClose }) {
     setInvitedIds(p => new Set([...p, targetUser._id || targetUser.id]));
   };
 
-  const startAlone = async () => {
-    setCreating(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/rooms/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: `${song.title} Room`, isPrivate: false }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        onClose();
-        navigate(`/room/${data.room.code}`);
-      }
-    } catch {}
-    setCreating(false);
-  };
+  const shareLink = `${window.location.origin}/#/feed?sync=${syncRoomCode || ''}`;
 
   return (
     <div className="modal-overlay" style={{ zIndex: 90 }}>
       <motion.div
-        className="modal-box w-full"
+        className="modal-box w-full max-w-md"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div style={{ background: 'rgba(65,174,169,0.2)', borderRadius: 10, padding: 8 }}>
               <Users size={20} color="#41AEA9" />
             </div>
             <div>
-              <h3 style={{ fontWeight: 800, fontSize: 16 }}>Listen Together</h3>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>Invite friends to sync</p>
+              <h3 style={{ fontWeight: 800, fontSize: 16 }}>Live 2-Seat Sync</h3>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>Listen on feed together with no lag</p>
             </div>
           </div>
           <button onClick={onClose} className="btn-icon" style={{ width: 32, height: 32 }}>
@@ -95,56 +69,79 @@ export default function ListenTogetherModal({ song, onClose }) {
           </button>
         </div>
 
-        {/* Song preview */}
-        <div className="flex items-center gap-3 mb-5 p-3 rounded-xl" style={{ background: 'rgba(65,174,169,0.08)', border: '1px solid rgba(65,174,169,0.2)' }}>
-          {song?.thumbnail && (
-            <img src={song.thumbnail} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover' }} />
-          )}
-          <div className="min-w-0">
-            <p style={{ fontWeight: 700, fontSize: 13, color: '#A6F6F1' }} className="truncate">{song?.title}</p>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{song?.channel}</p>
+        {/* 2 Seats Card */}
+        <div className="mb-4 p-4 rounded-2xl glass-card border border-teal-500/40 flex items-center justify-around bg-slate-900/60">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="relative">
+              <img src={getAvatarUrl((syncMembers || [])[0] || user)} className="w-12 h-12 rounded-full border-2 border-teal-400 object-cover shadow-lg" />
+              <span className="absolute -bottom-1 -right-1 bg-teal-500 text-[9px] text-slate-900 font-extrabold px-1.5 py-0.5 rounded-full">Seat 1</span>
+            </div>
+            <span className="text-xs font-bold text-teal-300 max-w-[80px] truncate">{(syncMembers || [])[0]?.username || user?.username || 'You'}</span>
           </div>
-          <Music2 size={18} color="#41AEA9" className="flex-shrink-0" />
+
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-teal-400 text-sm font-extrabold tracking-wider animate-pulse">⚡ SYNC ⚡</span>
+            <span className="text-[10px] text-white/50 mt-0.5">Shared Control</span>
+          </div>
+
+          <div className="flex flex-col items-center gap-1.5">
+            {(syncMembers || [])[1] ? (
+              <>
+                <div className="relative">
+                  <img src={getAvatarUrl((syncMembers || [])[1])} className="w-12 h-12 rounded-full border-2 border-teal-400 object-cover shadow-lg" />
+                  <span className="absolute -bottom-1 -right-1 bg-teal-500 text-[9px] text-slate-900 font-extrabold px-1.5 py-0.5 rounded-full">Seat 2</span>
+                </div>
+                <span className="text-xs font-bold text-teal-300 max-w-[80px] truncate">{(syncMembers || [])[1].username}</span>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-full border-2 border-dashed border-teal-400/50 flex items-center justify-center bg-teal-500/5 shadow-inner">
+                  <Users size={20} className="text-teal-400/60" />
+                </div>
+                <span className="text-[11px] text-teal-400/80 font-semibold">Seat 2 Empty</span>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Invitation Link Share Box */}
+        {/* Invitation Link Box */}
         <div className="mb-4 p-3 rounded-xl flex flex-col items-center gap-2" style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid var(--primary)' }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#A6F6F1' }}>🔗 Share Invitation Link</p>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#A6F6F1' }}>🔗 Share Invitation Link (Direct Feed Access)</p>
           <div className="flex items-center gap-2 w-full">
             <input
               readOnly
-              value={roomCode ? `${window.location.origin}/#/room/${roomCode}` : 'Generating invitation link...'}
+              value={syncRoomCode ? shareLink : 'Generating invitation link...'}
               className="glass-input flex-1 text-center truncate"
               style={{ fontSize: 11, padding: '6px 10px' }}
             />
             <button
-              disabled={!roomCode}
+              disabled={!syncRoomCode}
               onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/#/room/${roomCode}`);
+                navigator.clipboard.writeText(shareLink);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               }}
-              className="btn-primary flex-shrink-0"
+              className="btn-primary flex-shrink-0 flex items-center gap-1"
               style={{ padding: '6px 14px', fontSize: 11, borderRadius: 8 }}
             >
-              {copied ? 'Copied!' : 'Copy'}
+              <Copy size={12} /> {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
         </div>
 
-        {/* Search */}
+        {/* Search Friends */}
         <div className="search-bar mb-3">
           <input
             value={search}
             onChange={e => searchUsers(e.target.value)}
-            placeholder="Search friends by username..."
+            placeholder="Or invite friends directly by username..."
             style={{ fontSize: 13 }}
           />
         </div>
 
         {/* Results */}
         {results.length > 0 && (
-          <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
+          <div className="space-y-2 max-h-40 overflow-y-auto">
             {results.map(u => {
               const uid = u._id || u.id;
               const invited = invitedIds.has(uid);
@@ -163,7 +160,7 @@ export default function ListenTogetherModal({ song, onClose }) {
                   >
                     {invited ? (
                       <><Check size={14} /> Invited</>
-                    ) : 'Invite'}
+                    ) : 'Invite Seat 2'}
                   </button>
                 </div>
               );
@@ -176,19 +173,6 @@ export default function ListenTogetherModal({ song, onClose }) {
             <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: '#41AEA9', borderTopColor: 'transparent' }} />
           </div>
         )}
-
-        {/* Start solo room */}
-        <button
-          onClick={() => roomCode ? navigate(`/room/${roomCode}`) : startAlone()}
-          disabled={creating && !roomCode}
-          className="btn-primary w-full mt-2"
-          id="btn-start-room"
-        >
-          {creating ? 'Creating room...' : '🎧 Enter Listening Room'}
-        </button>
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 8 }}>
-          Others can join via room link
-        </p>
       </motion.div>
     </div>
   );

@@ -5,12 +5,12 @@ import WaveformAnim from './WaveformAnim';
 import SongActions from './SongActions';
 import CommentSheet from './CommentSheet';
 import ListenTogetherModal from './ListenTogetherModal';
-import { formatDuration } from '../utils/config';
+import { formatDuration, getAvatarUrl } from '../utils/config';
 import { Music2, Clock, Play, Pause } from 'lucide-react';
 import { useFeed } from '../context/FeedContext';
 
 export default function MusicFeedCard({ song, isActive, index }) {
-  const { isPlaying, elapsed, togglePlay, seekTo } = useFeed();
+  const { isPlaying, elapsed, togglePlay, seekTo, syncRoomCode, syncMembers } = useFeed();
   const [showComment, setShowComment] = useState(false);
   const [showListenModal, setShowListenModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -63,9 +63,32 @@ export default function MusicFeedCard({ song, isActive, index }) {
               <Music2 size={16} color="#0F172A" />
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5, color: '#A6F6F1' }}>
-              Listen With Friends
+              {syncRoomCode ? 'Synced Live Feed' : 'Listen With Friends'}
             </span>
           </div>
+
+          {/* 2 Seats Header Pill */}
+          {syncRoomCode && (
+            <div className="flex items-center gap-2 bg-slate-900/90 border border-[var(--primary)] px-3 py-1 rounded-full shadow-lg">
+              <div className="flex items-center gap-1.5" title="Seat 1 (Host)">
+                <img src={getAvatarUrl((syncMembers || [])[0] || {})} className="w-5 h-5 rounded-full border border-teal-400 object-cover" />
+                <span className="text-[11px] font-bold text-teal-300 max-w-[60px] truncate">{(syncMembers || [])[0]?.username || 'You'}</span>
+              </div>
+              <span className="text-white/30 text-xs">⚡</span>
+              <div className="flex items-center gap-1.5" title="Seat 2 (Partner)">
+                {(syncMembers || [])[1] ? (
+                  <>
+                    <img src={getAvatarUrl((syncMembers || [])[1])} className="w-5 h-5 rounded-full border border-teal-400 object-cover" />
+                    <span className="text-[11px] font-bold text-teal-300 max-w-[60px] truncate">{(syncMembers || [])[1].username}</span>
+                  </>
+                ) : (
+                  <button onClick={() => setShowListenModal(true)} className="text-[11px] text-teal-400 font-bold border border-dashed border-teal-400/60 px-2 py-0.5 rounded-full animate-pulse bg-teal-500/10">
+                    + Seat 2
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Top song info */}
