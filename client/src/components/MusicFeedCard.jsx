@@ -146,12 +146,18 @@ export default function MusicFeedCard({ song, isActive, index }) {
             min="0" 
             max="100" 
             value={progress || 0}
-            onPointerDown={() => {
+            onTouchStart={() => {
+              setIsDragging(true);
+              setLocalProgress(actualProgress);
+            }}
+            onMouseDown={() => {
               setIsDragging(true);
               setLocalProgress(actualProgress);
             }}
             onPointerUp={handleSeekEnd}
             onTouchEnd={handleSeekEnd}
+            onMouseUp={handleSeekEnd}
+            onInput={(e) => setLocalProgress(parseFloat(e.target.value))}
             onChange={(e) => setLocalProgress(parseFloat(e.target.value))}
             style={{ 
               height: 4, borderRadius: 2, cursor: 'pointer',

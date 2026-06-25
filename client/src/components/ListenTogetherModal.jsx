@@ -15,6 +15,24 @@ export default function ListenTogetherModal({ song, onClose }) {
   const [invitedIds, setInvitedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [roomCode, setRoomCode] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  React.useEffect(() => {
+    if (!token || roomCode) return;
+    setCreating(true);
+    fetch(`${API_BASE_URL}/rooms/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: `${song?.title?.slice(0, 25) || 'Music'} Room`, isPrivate: false }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.room) setRoomCode(d.room.code);
+      })
+      .catch(console.error)
+      .finally(() => setCreating(false));
+  }, [token, song]);
 
   const searchUsers = async (q) => {
     setSearch(q);
@@ -89,6 +107,31 @@ export default function ListenTogetherModal({ song, onClose }) {
           <Music2 size={18} color="#41AEA9" className="flex-shrink-0" />
         </div>
 
+        {/* Invitation Link Share Box */}
+        <div className="mb-4 p-3 rounded-xl flex flex-col items-center gap-2" style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid var(--primary)' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#A6F6F1' }}>🔗 Share Invitation Link</p>
+          <div className="flex items-center gap-2 w-full">
+            <input
+              readOnly
+              value={roomCode ? `${window.location.origin}/#/room/${roomCode}` : 'Generating invitation link...'}
+              className="glass-input flex-1 text-center truncate"
+              style={{ fontSize: 11, padding: '6px 10px' }}
+            />
+            <button
+              disabled={!roomCode}
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/#/room/${roomCode}`);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="btn-primary flex-shrink-0"
+              style={{ padding: '6px 14px', fontSize: 11, borderRadius: 8 }}
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        </div>
+
         {/* Search */}
         <div className="search-bar mb-3">
           <input
@@ -136,12 +179,12 @@ export default function ListenTogetherModal({ song, onClose }) {
 
         {/* Start solo room */}
         <button
-          onClick={startAlone}
-          disabled={creating}
+          onClick={() => roomCode ? navigate(`/room/${roomCode}`) : startAlone()}
+          disabled={creating && !roomCode}
           className="btn-primary w-full mt-2"
           id="btn-start-room"
         >
-          {creating ? 'Creating room...' : '🎧 Start Listening Room'}
+          {creating ? 'Creating room...' : '🎧 Enter Listening Room'}
         </button>
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 8 }}>
           Others can join via room link

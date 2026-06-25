@@ -39,8 +39,13 @@ export function FeedProvider({ children }) {
   // Stop playback when component unmounts (logout)
   useEffect(() => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
-      const func = isPlaying ? 'playVideo' : 'pauseVideo';
-      iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: func, args: [] }), '*');
+      if (isPlaying) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+      } else {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+      }
     }
   }, [isPlaying]);
 
