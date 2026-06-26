@@ -4,6 +4,7 @@ import VinylRecord from './VinylRecord';
 import WaveformAnim from './WaveformAnim';
 import SongActions from './SongActions';
 import CommentSheet from './CommentSheet';
+import ChatDrawer from './ChatDrawer';
 import ListenTogetherModal from './ListenTogetherModal';
 import { formatDuration, getAvatarUrl } from '../utils/config';
 import { Music2, Clock, Play, Pause, Mic, MicOff } from 'lucide-react';
@@ -12,6 +13,7 @@ import { useFeed } from '../context/FeedContext';
 export default function MusicFeedCard({ song, isActive, index }) {
   const { isPlaying, elapsed, togglePlay, seekTo, syncRoomCode, syncMembers, voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute } = useFeed();
   const [showComment, setShowComment] = useState(false);
+  const [showChatDrawer, setShowChatDrawer] = useState(false);
   const [showListenModal, setShowListenModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [localProgress, setLocalProgress] = useState(0);
@@ -230,6 +232,7 @@ export default function MusicFeedCard({ song, isActive, index }) {
           <SongActions
             song={song}
             onComment={() => setShowComment(true)}
+            onChat={() => setShowChatDrawer(true)}
             onListenTogether={() => setShowListenModal(true)}
           />
         </div>
@@ -246,6 +249,13 @@ export default function MusicFeedCard({ song, isActive, index }) {
       <AnimatePresence>
         {showListenModal && (
           <ListenTogetherModal song={song} onClose={() => setShowListenModal(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Global & Followers Chat Drawer */}
+      <AnimatePresence>
+        {showChatDrawer && (
+          <ChatDrawer song={song} onClose={() => setShowChatDrawer(false)} />
         )}
       </AnimatePresence>
     </div>
