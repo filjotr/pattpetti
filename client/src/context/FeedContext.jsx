@@ -37,6 +37,7 @@ export function FeedProvider({ children }) {
   const [startTime, setStartTime] = useState(Date.now());
   const iframeRef = useRef(null);
   const intervalRef = useRef(null);
+  const isFirstMountRef = useRef(true);
 
   useEffect(() => {
     const checkSyncUrl = () => {
@@ -96,8 +97,35 @@ export function FeedProvider({ children }) {
     setBaseElapsed(0);
     setStartTime(Date.now());
     setElapsed(0);
-    setIsPlaying(true);
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      setIsPlaying(false);
+    } else {
+      setIsPlaying(true);
+    }
   }, [activeIndex]);
+
+  // Global auto-unlock to guarantee audio plays on any screen touch if browser blocked autoplay
+  useEffect(() => {
+    if (!isPlaying) return;
+    const forceUnlock = () => {
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }), '*');
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+      }
+    };
+    window.addEventListener('pointerdown', forceUnlock, { passive: true });
+    window.addEventListener('touchstart', forceUnlock, { passive: true });
+    window.addEventListener('click', forceUnlock, { passive: true });
+    window.addEventListener('keydown', forceUnlock, { passive: true });
+    return () => {
+      window.removeEventListener('pointerdown', forceUnlock);
+      window.removeEventListener('touchstart', forceUnlock);
+      window.removeEventListener('click', forceUnlock);
+      window.removeEventListener('keydown', forceUnlock);
+    };
+  }, [isPlaying, activeIndex]);
 
   useEffect(() => {
     if (isPlaying) {
