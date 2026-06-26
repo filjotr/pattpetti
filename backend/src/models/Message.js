@@ -8,11 +8,13 @@ const messageSchema = new mongoose.Schema({
   },
   text:      { type: String, required: true, maxlength: 500 },
   room:      { type: mongoose.Schema.Types.ObjectId, ref: 'Room', default: null },
+  dmRoom:    { type: String, default: null },
   isGlobal:  { type: Boolean, default: false },
   timestamp: { type: Date, default: Date.now }
 });
 
 messageSchema.index({ room: 1, timestamp: 1 });
+messageSchema.index({ dmRoom: 1, timestamp: 1 });
 messageSchema.index({ isGlobal: 1, timestamp: 1 });
 
 module.exports = mongoose.model('Message', messageSchema);

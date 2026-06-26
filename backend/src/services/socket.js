@@ -64,6 +64,35 @@ function setupSocketIO(io) {
     });
 
     // ==========================================
+    // DIRECT MESSAGING (DM / Followers)
+    // ==========================================
+    socket.on('dm-join', async ({ targetUserId }) => {
+      if (!targetUserId || !socket.user || !socket.user._id) return;
+      const dmRoom = [socket.user._id.toString(), targetUserId.toString()].sort().join('_');
+      socket.join(dmRoom);
+      const history = await Message.find({ dmRoom }).sort({ timestamp: -1 }).limit(50).lean();
+      socket.emit('dm-history', { targetUserId, history: history.reverse() });
+    });
+
+    socket.on('dm-send', async ({ targetUserId, text }) => {
+      if (!text || !targetUserId || !socket.user || !socket.user._id) return;
+      const dmRoom = [socket.user._id.toString(), targetUserId.toString()].sort().join('_');
+      const msg = new Message({
+        sender: { userId: socket.user._id, username: socket.user.username, avatar: socket.user.avatar },
+        text,
+        dmRoom
+      });
+      await msg.save();
+      io.to(dmRoom).emit('dm-message', { dmRoom, targetUserId, message: msg });
+      
+      for (const [sId, uData] of users.entries()) {
+        if (uData.userId.toString() === targetUserId.toString() && sId !== socket.id) {
+          io.to(sId).emit('dm-notification', { sender: socket.user, text });
+        }
+      }
+    });
+
+    // ==========================================
     // LISTEN TOGETHER INVITES
     // ==========================================
     socket.on('listen-invite', async ({ targetUserId, song }) => {

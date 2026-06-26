@@ -66,4 +66,19 @@ router.get('/profile/:userId', async (req, res) => {
   }
 });
 
+// Get followers & following connections
+router.get('/connections', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate('followers following', 'username avatar googleAvatar');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const map = new Map();
+    (user.followers || []).forEach(f => { if (f && f._id) map.set(f._id.toString(), f); });
+    (user.following || []).forEach(f => { if (f && f._id) map.set(f._id.toString(), f); });
+    const connections = Array.from(map.values());
+    res.json({ connections });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
