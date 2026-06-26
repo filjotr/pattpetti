@@ -104,10 +104,17 @@ export function SocialProvider({ children }) {
       // optional toast
     });
 
+    socket.on('redirect-to-room', ({ code }) => {
+      if (code) {
+        window.location.hash = `#/feed?sync=${code}`;
+      }
+    });
+
     return () => {
       socket.off('notification-new');
       socket.off('listen-invite-received');
       socket.off('listen-invite-declined');
+      socket.off('redirect-to-room');
     };
   }, [socket]);
 
