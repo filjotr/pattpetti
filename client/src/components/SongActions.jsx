@@ -23,8 +23,8 @@ export default function SongActions({ song, onComment, onListenTogether }) {
   const handleShare = async () => {
     const shareData = {
       title: song.title,
-      text: `🎵 ${song.title} by ${song.channel} — Listen on Listen With Friends!`,
-      url: `https://listentogether.app/song/${vid}`,
+      text: `🎵 ${song.title} by ${song.channel} — Listen with Friends!`,
+      url: `${window.location.origin}/#/feed?song=${vid}`,
     };
     try {
       if (navigator.share) {

@@ -69,4 +69,17 @@ router.get('/trending', async (req, res) => {
   }
 });
 
+router.get('/details/:videoId', async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    if (!videoId) return res.status(400).json({ message: 'Video ID required' });
+    const video = await ytSearch({ videoId });
+    if (!video) return res.status(404).json({ message: 'Song not found' });
+    res.json({ song: parseSong(video, 'Shared') });
+  } catch (err) {
+    console.error('yt-search details error:', err);
+    res.status(500).json({ message: 'Error fetching song details' });
+  }
+});
+
 module.exports = router;

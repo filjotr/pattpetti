@@ -99,7 +99,6 @@ function setupSocketIO(io) {
       if (!roomCode) return;
       const code = roomCode.toUpperCase();
       const room = await Room.findOne({ code }).populate('host', 'username');
-      if (!room) return;
 
       socket.join(code);
       const uData = users.get(socket.id);
@@ -114,9 +113,13 @@ function setupSocketIO(io) {
       io.to(code).emit('user-joined', { members: roomUsers });
       
       // Send initial state to joiner
-      const chatHist = await Message.find({ room: room._id }).sort({ timestamp: -1 }).limit(50).lean();
-      socket.emit('room-state', { room, members: roomUsers });
-      socket.emit('chat-history', chatHist.reverse());
+      if (room) {
+        const chatHist = await Message.find({ room: room._id }).sort({ timestamp: -1 }).limit(50).lean();
+        socket.emit('room-state', { room, members: roomUsers });
+        socket.emit('chat-history', chatHist.reverse());
+      } else {
+        socket.emit('room-state', { room: { code, name: 'Live Sync' }, members: roomUsers });
+      }
     });
 
     socket.on('send-message', async ({ text }) => {

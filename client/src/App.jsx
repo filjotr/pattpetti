@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { FeedProvider } from './context/FeedContext';
@@ -32,8 +32,12 @@ function AuthGuard({ children }) {
 function GuestGuard({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  // Let OnboardingPage handle its own redirects so the interests step isn't skipped
   return children;
+}
+
+function SongRedirect() {
+  const { vid } = useParams();
+  return <Navigate to={`/feed?song=${vid}`} replace />;
 }
 
 function Layout() {
@@ -62,6 +66,7 @@ function Layout() {
         <Route path="/profile/:userId" element={<AuthGuard><ProfilePage /></AuthGuard>} />
         <Route path="/notifications" element={<AuthGuard><NotificationsPage /></AuthGuard>} />
         <Route path="/admin" element={<AuthGuard><AdminPage /></AuthGuard>} />
+        <Route path="/song/:vid" element={<AuthGuard><SongRedirect /></AuthGuard>} />
 
         {/* 404 */}
         <Route path="*" element={<NotFoundPage />} />

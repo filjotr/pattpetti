@@ -141,8 +141,34 @@ export function FeedProvider({ children }) {
       const interests = user?.interests || ['English'];
       const pageToken = reset ? '' : (nextPageToken || '');
       const { songs: newSongs, nextPageToken: npt } = await fetchTrendingByGenre(interests, pageToken);
-      setSongs(prev => reset ? newSongs : [...prev, ...newSongs]);
+
+      let sharedSong = null;
+      if (reset) {
+        const hashParts = window.location.hash.split('?');
+        if (hashParts.length > 1) {
+          const params = new URLSearchParams(hashParts[1]);
+          const songId = params.get('song');
+          if (songId) {
+            try {
+              const res = await fetch(`${API_BASE_URL}/youtube/details/${songId}`);
+              const data = await res.json();
+              if (data.song) sharedSong = data.song;
+            } catch {}
+          }
+        }
+      }
+
+      setSongs(prev => {
+        if (reset) {
+          return sharedSong ? [sharedSong, ...newSongs.filter(s => s.videoId !== sharedSong.videoId)] : newSongs;
+        }
+        return [...prev, ...newSongs];
+      });
       setNextPageToken(npt);
+      if (reset && sharedSong) {
+        setActiveIndex(0);
+        setIsPlaying(true);
+      }
     } catch (err) {
       console.error('Feed load error:', err);
     } finally {
