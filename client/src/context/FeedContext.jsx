@@ -66,11 +66,11 @@ export function FeedProvider({ children }) {
     setIsPlaying(prev => {
       const next = !prev;
       if (!isRemote && socket && syncRoomCode) {
-        socket.emit('sync-feed-state', { activeIndex, isPlaying: next, elapsed, timestamp: Date.now() });
+        socket.emit('sync-feed-state', { activeIndex, isPlaying: next, elapsed, timestamp: Date.now(), song: songs[activeIndex] });
       }
       return next;
     });
-  }, [socket, syncRoomCode, activeIndex, elapsed]);
+  }, [socket, syncRoomCode, activeIndex, elapsed, songs]);
 
   // Stop playback when component unmounts (logout)
   useEffect(() => {
@@ -259,17 +259,17 @@ export function FeedProvider({ children }) {
       setStartTime(Date.now());
       setElapsed(seconds);
       if (!isRemote && socket && syncRoomCode) {
-        socket.emit('sync-feed-state', { activeIndex, isPlaying, elapsed: seconds, timestamp: Date.now() });
+        socket.emit('sync-feed-state', { activeIndex, isPlaying, elapsed: seconds, timestamp: Date.now(), song: songs[activeIndex] });
       }
     }
-  }, [socket, syncRoomCode, activeIndex, isPlaying]);
+  }, [socket, syncRoomCode, activeIndex, isPlaying, songs]);
 
   const changeTrack = useCallback((newIndex, isRemote = false) => {
     setActiveIndex(newIndex);
     if (!isRemote && socket && syncRoomCode) {
-      socket.emit('sync-feed-state', { activeIndex: newIndex, isPlaying: true, elapsed: 0, timestamp: Date.now() });
+      socket.emit('sync-feed-state', { activeIndex: newIndex, isPlaying: true, elapsed: 0, timestamp: Date.now(), song: songs[newIndex] });
     }
-  }, [socket, syncRoomCode]);
+  }, [socket, syncRoomCode, songs]);
 
   useEffect(() => {
     if (!socket || !syncRoomCode) return;
@@ -278,10 +278,20 @@ export function FeedProvider({ children }) {
     const handleLeft = ({ members }) => setSyncMembers((members || []).slice(0, 2));
 
     const handleRequestSync = () => {
-      socket.emit('sync-feed-state', { activeIndex, isPlaying, elapsed, timestamp: Date.now() });
+      socket.emit('sync-feed-state', { activeIndex, isPlaying, elapsed, timestamp: Date.now(), playlist: songs });
     };
 
     const handleSyncState = (state) => {
+      if (state.playlist && Array.isArray(state.playlist) && state.playlist.length > 0) {
+        setSongs(state.playlist);
+      } else if (state.song && state.activeIndex !== undefined) {
+        setSongs(prev => {
+          const arr = [...prev];
+          arr[state.activeIndex] = state.song;
+          return arr;
+        });
+      }
+
       if (state.activeIndex !== undefined && state.activeIndex !== activeIndex) {
         changeTrack(state.activeIndex, true);
       }
@@ -307,7 +317,7 @@ export function FeedProvider({ children }) {
       socket.off('request-feed-sync', handleRequestSync);
       socket.off('sync-feed-state', handleSyncState);
     };
-  }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, seekTo, changeTrack]);
+  }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, songs, seekTo, changeTrack]);
 
   useEffect(() => {
     if ('mediaSession' in navigator) {
