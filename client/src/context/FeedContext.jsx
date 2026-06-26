@@ -7,6 +7,13 @@ import { useSocket } from './SocketContext';
 const FeedContext = createContext();
 export const useFeed = () => useContext(FeedContext);
 
+const ICE_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+};
+
 function parseDuration(str) {
   if (!str) return 0;
   const isoMatch = String(str).match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -38,6 +45,25 @@ export function FeedProvider({ children }) {
   const iframeRef = useRef(null);
   const intervalRef = useRef(null);
   const isFirstMountRef = useRef(true);
+
+  // WebRTC Voice Chat State
+  const [voiceJoined, setVoiceJoined] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [remoteAudioStream, setRemoteAudioStream] = useState(null);
+
+  const localStreamRef = useRef(null);
+  const peerRef = useRef(null);
+  const pendingCandidatesRef = useRef([]);
+  const voiceJoinedRef = useRef(false);
+  const remoteAudioRef = useRef(null);
+
+  useEffect(() => { voiceJoinedRef.current = voiceJoined; }, [voiceJoined]);
+
+  useEffect(() => {
+    if (remoteAudioRef.current && remoteAudioStream) {
+      remoteAudioRef.current.srcObject = remoteAudioStream;
+    }
+  }, [remoteAudioStream]);
 
   useEffect(() => {
     const checkSyncUrl = () => {
@@ -319,6 +345,127 @@ export function FeedProvider({ children }) {
     };
   }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, songs, seekTo, changeTrack]);
 
+  // WebRTC Voice Chat Methods
+  const leaveVoice = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current = null;
+    }
+    peerRef.current?.close();
+    peerRef.current = null;
+    setRemoteAudioStream(null);
+    setVoiceJoined(false);
+    if (socket && syncRoomCode) socket.emit('voice-leave');
+  }, [socket, syncRoomCode]);
+
+  const joinVoice = async () => {
+    if (!socket || !syncRoomCode || voiceJoined) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStreamRef.current = stream;
+      stream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
+      setVoiceJoined(true);
+      socket.emit('voice-join');
+    } catch (err) {
+      alert('Microphone access denied');
+    }
+  };
+
+  const toggleMute = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !next; });
+    socket?.emit('voice-toggle-mute', { isMuted: next });
+  };
+
+  const createVoicePeer = useCallback((targetId, isInitiator) => {
+    if (peerRef.current) return peerRef.current;
+    const peer = new RTCPeerConnection(ICE_CONFIG);
+    localStreamRef.current?.getTracks().forEach(t => peer.addTrack(t, localStreamRef.current));
+    peer.ontrack = e => setRemoteAudioStream(e.streams[0]);
+    peer.onicecandidate = e => {
+      if (e.candidate && socket) {
+        socket.emit('webrtc-signal', { to: targetId, signal: { type: 'candidate', candidate: e.candidate } });
+      }
+    };
+    peer.onconnectionstatechange = () => {
+      if (['disconnected','failed','closed'].includes(peer.connectionState)) {
+        peerRef.current?.close();
+        peerRef.current = null;
+        setRemoteAudioStream(null);
+      }
+    };
+    peerRef.current = peer;
+
+    if (isInitiator) {
+      peer.createOffer()
+        .then(o => peer.setLocalDescription(o))
+        .then(() => socket?.emit('webrtc-signal', { to: targetId, signal: peer.localDescription }));
+    }
+    return peer;
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket || !syncRoomCode) {
+      leaveVoice();
+      return;
+    }
+
+    const handleVoiceJoined = ({ socketId }) => {
+      setSyncMembers(p => p.map(m => m.socketId === socketId ? { ...m, isVoiceJoined: true } : m));
+      if (voiceJoinedRef.current && socketId !== socket.id) {
+        createVoicePeer(socketId, true);
+      }
+    };
+
+    const handleVoiceLeft = ({ socketId }) => {
+      setSyncMembers(p => p.map(m => m.socketId === socketId ? { ...m, isVoiceJoined: false } : m));
+      peerRef.current?.close();
+      peerRef.current = null;
+      setRemoteAudioStream(null);
+    };
+
+    const handleVoiceMute = ({ socketId, isMuted: mStatus }) => {
+      setSyncMembers(p => p.map(m => m.socketId === socketId ? { ...m, isVoiceJoined: true, isMuted: mStatus } : m));
+    };
+
+    const handleSignal = async ({ from, signal }) => {
+      if (!voiceJoinedRef.current) return;
+      let peer = peerRef.current;
+      if (signal.type === 'offer') {
+        peer = createVoicePeer(from, false);
+        await peer.setRemoteDescription(new RTCSessionDescription(signal));
+        for (const c of pendingCandidatesRef.current) {
+          await peer.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+        }
+        pendingCandidatesRef.current = [];
+        const ans = await peer.createAnswer();
+        await peer.setLocalDescription(ans);
+        socket.emit('webrtc-signal', { to: from, signal: peer.localDescription });
+      } else if (signal.type === 'answer' && peer) {
+        await peer.setRemoteDescription(new RTCSessionDescription(signal)).catch(() => {});
+      } else if (signal.type === 'candidate') {
+        if (peer?.remoteDescription) {
+          peer.addIceCandidate(new RTCIceCandidate(signal.candidate)).catch(() => {});
+        } else {
+          pendingCandidatesRef.current.push(signal.candidate);
+        }
+      }
+    };
+
+    socket.on('user-voice-joined', handleVoiceJoined);
+    socket.on('user-voice-left', handleVoiceLeft);
+    socket.on('user-mute-updated', handleVoiceMute);
+    socket.on('webrtc-signal', handleSignal);
+
+    return () => {
+      socket.off('user-voice-joined', handleVoiceJoined);
+      socket.off('user-voice-left', handleVoiceLeft);
+      socket.off('user-mute-updated', handleVoiceMute);
+      socket.off('webrtc-signal', handleSignal);
+    };
+  }, [socket, syncRoomCode, createVoicePeer, leaveVoice]);
+
   useEffect(() => {
     if ('mediaSession' in navigator) {
       const currentSong = songs[activeIndex];
@@ -350,9 +497,12 @@ export function FeedProvider({ children }) {
       isPlaying, setIsPlaying,
       elapsed, togglePlay,
       seekTo,
-      syncRoomCode, setSyncRoomCode, syncMembers
+      syncRoomCode, setSyncRoomCode, syncMembers,
+      voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute
     }}>
       {children}
+      {/* Hidden Audio Tag for Partner Voice */}
+      <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
       {/* Global Audio Player for Feed */}
       {songs[activeIndex]?.videoId && (
         <iframe

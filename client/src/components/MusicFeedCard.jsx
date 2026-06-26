@@ -6,11 +6,11 @@ import SongActions from './SongActions';
 import CommentSheet from './CommentSheet';
 import ListenTogetherModal from './ListenTogetherModal';
 import { formatDuration, getAvatarUrl } from '../utils/config';
-import { Music2, Clock, Play, Pause } from 'lucide-react';
+import { Music2, Clock, Play, Pause, Mic, MicOff } from 'lucide-react';
 import { useFeed } from '../context/FeedContext';
 
 export default function MusicFeedCard({ song, isActive, index }) {
-  const { isPlaying, elapsed, togglePlay, seekTo, syncRoomCode, syncMembers } = useFeed();
+  const { isPlaying, elapsed, togglePlay, seekTo, syncRoomCode, syncMembers, voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute } = useFeed();
   const [showComment, setShowComment] = useState(false);
   const [showListenModal, setShowListenModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -84,6 +84,30 @@ export default function MusicFeedCard({ song, isActive, index }) {
                 ) : (
                   <button onClick={() => setShowListenModal(true)} className="text-[11px] text-teal-400 font-bold border border-dashed border-teal-400/60 px-2 py-0.5 rounded-full animate-pulse bg-teal-500/10">
                     + Seat 2
+                  </button>
+                )}
+              </div>
+              {/* Mic Option */}
+              <div className="border-l border-white/20 pl-2 ml-1 flex items-center">
+                {!voiceJoined ? (
+                  <button
+                    onClick={joinVoice}
+                    className="flex items-center gap-1 text-[11px] font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded-full transition-all"
+                    title="Tap to join Mic"
+                  >
+                    <MicOff size={13} className="text-red-400 animate-pulse" />
+                    <span>Mic</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={toggleMute}
+                    className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full transition-all shadow-md ${
+                      isMuted ? 'bg-red-500/20 text-red-300 border border-red-500/50' : 'bg-teal-500/20 text-teal-300 border border-teal-500/50 shadow-teal-500/20'
+                    }`}
+                    title={isMuted ? 'Muted (Tap to unmute)' : 'Active Mic (Tap to mute)'}
+                  >
+                    <Mic size={13} className={isMuted ? 'text-red-400' : 'text-teal-400 animate-bounce'} />
+                    <span>{isMuted ? 'Muted' : 'Live'}</span>
                   </button>
                 )}
               </div>
