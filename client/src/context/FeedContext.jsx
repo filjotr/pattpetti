@@ -135,7 +135,7 @@ export function FeedProvider({ children }) {
 
   // Global auto-unlock to guarantee audio plays on any screen touch if browser blocked autoplay
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || isAudioPlaying) return;
     const forceUnlock = () => {
       if (iframeRef.current && iframeRef.current.contentWindow) {
         iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');

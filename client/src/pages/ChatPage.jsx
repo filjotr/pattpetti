@@ -7,11 +7,6 @@ import { API_BASE_URL, getAvatarUrl, timeAgo } from '../utils/config';
 export default function ChatPage() {
   const { user, token } = useAuth();
   const { socket } = useSocket();
-  const [tab, setTab] = useState('global'); // 'global' | 'followers'
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
-  const [typing, setTyping] = useState(false);
-  const [typingUsers, setTypingUsers] = useState([]);
   
   // Followers & DM state
   const [connections, setConnections] = useState([]);
@@ -20,20 +15,10 @@ export default function ChatPage() {
   const [dmMessages, setDmMessages] = useState([]);
   const [dmText, setDmText] = useState('');
 
-  const bottomRef = useRef(null);
   const dmBottomRef = useRef(null);
-  const typingTimerRef = useRef(null);
 
   useEffect(() => {
     if (!socket) return;
-    socket.emit('global-chat-join');
-    socket.on('global-message', m => setMessages(p => [...p, m]));
-    socket.on('global-history', h => setMessages(h || []));
-    socket.on('global-typing', ({ username }) => {
-      setTypingUsers(p => p.includes(username) ? p : [...p, username]);
-      setTimeout(() => setTypingUsers(p => p.filter(u => u !== username)), 2500);
-    });
-
     socket.on('dm-history', ({ targetUserId, history }) => {
       setDmMessages(history || []);
     });
@@ -42,16 +27,13 @@ export default function ChatPage() {
     });
 
     return () => {
-      socket.off('global-message');
-      socket.off('global-history');
-      socket.off('global-typing');
       socket.off('dm-history');
       socket.off('dm-message');
     };
   }, [socket]);
 
   useEffect(() => {
-    if (tab === 'followers' && token && !activeDmUser) {
+    if (token && !activeDmUser) {
       setLoadingConn(true);
       fetch(`${API_BASE_URL}/social/connections`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -63,31 +45,11 @@ export default function ChatPage() {
         })
         .catch(() => setLoadingConn(false));
     }
-  }, [tab, token, activeDmUser]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [token, activeDmUser]);
 
   useEffect(() => {
     dmBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [dmMessages, activeDmUser]);
-
-  const handleTyping = () => {
-    if (!typing && socket && !activeDmUser) {
-      setTyping(true);
-      socket.emit('global-typing');
-    }
-    clearTimeout(typingTimerRef.current);
-    typingTimerRef.current = setTimeout(() => setTyping(false), 2000);
-  };
-
-  const send = () => {
-    if (!text.trim() || !socket || user?.isGuest) return;
-    socket.emit('global-send', { text: text.trim() });
-    setText('');
-    setTyping(false);
-  };
 
   const handleOpenDm = (friend) => {
     setActiveDmUser(friend);
@@ -120,24 +82,13 @@ export default function ChatPage() {
           </div>
         ) : (
           <div className="flex items-center justify-between w-full">
-            <h1 className="text-lg font-black text-white flex items-center gap-2">
-              <MessageCircle className="text-teal-400" size={22} />
-              <span>Chat</span>
+            <h1 className="text-lg font-black text-white flex items-center gap-2.5">
+              <MessageCircle className="text-teal-400" size={24} />
+              <span>Messages & Friends</span>
             </h1>
-            <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-full border border-white/10 shadow-inner">
-              <button
-                onClick={() => setTab('global')}
-                className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all ${tab === 'global' ? 'bg-teal-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'}`}
-              >
-                Global Chat
-              </button>
-              <button
-                onClick={() => setTab('followers')}
-                className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all flex items-center gap-1.5 ${tab === 'followers' ? 'bg-teal-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'}`}
-              >
-                <Users size={14} />
-                <span>Followers</span>
-              </button>
+            <div className="flex items-center gap-1.5 bg-teal-500/10 border border-teal-500/30 px-3 py-1 rounded-full">
+              <Users size={14} className="text-teal-400" />
+              <span className="text-xs font-bold text-teal-300">{connections.length} Friends</span>
             </div>
           </div>
         )}
@@ -177,14 +128,14 @@ export default function ChatPage() {
           })}
           <div ref={dmBottomRef} />
         </div>
-      ) : tab === 'followers' ? (
+      ) : (
         /* Connections / Followers List */
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2.5">
           {loadingConn ? (
             <div className="flex justify-center py-16"><Loader2 className="animate-spin text-teal-400" size={28} /></div>
           ) : connections.length === 0 ? (
             <div className="text-center py-16 text-slate-400 text-xs px-6 leading-relaxed bg-slate-900/30 rounded-2xl p-6 border border-white/5 my-4">
-              No followers or friends connected yet. Follow users on the music feed to start chatting! 👥
+              No followers or friends connected yet. Follow users on the music feed to start chatting privately! 👥
             </div>
           ) : (
             connections.map((c, i) => (
@@ -205,61 +156,10 @@ export default function ChatPage() {
             ))
           )}
         </div>
-      ) : (
-        /* Global Chat Timeline */
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5">
-          {messages.length === 0 && (
-            <div className="text-center py-16 text-slate-400 text-xs bg-slate-900/30 rounded-2xl p-6 border border-white/5 my-4 mx-2">
-              No messages yet. Start the conversation! 🎵
-            </div>
-          )}
-          {messages.map((m, i) => {
-            const isMe = m.sender?.userId === (user?._id || user?.id);
-            return (
-              <div key={m._id || i} className={`flex gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
-                {!isMe && (
-                  <img src={getAvatarUrl(m.sender)} alt="" className="w-8 h-8 rounded-full border border-white/10 object-cover flex-shrink-0 mt-0.5" />
-                )}
-                <div style={{ maxWidth: '75%' }}>
-                  {!isMe && (
-                    <p style={{ fontSize: 11, color: '#A6F6F1', fontWeight: 600, marginBottom: 3, paddingLeft: 2 }}>
-                      {m.sender?.username}
-                    </p>
-                  )}
-                  <div style={{
-                    background: isMe ? 'linear-gradient(135deg, #41AEA9, #2D9C96)' : 'rgba(255,255,255,0.08)',
-                    padding: '10px 14px',
-                    borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    fontSize: 13.5, color: '#fff', lineHeight: 1.5,
-                  }}>
-                    {m.text}
-                  </div>
-                  <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 4, textAlign: isMe ? 'right' : 'left' }}>
-                    {timeAgo(m.timestamp)}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-
-          {typingUsers.length > 0 && (
-            <div className="flex items-center gap-2 px-2">
-              <div className="flex gap-1">
-                <div className="typing-dot" />
-                <div className="typing-dot" />
-                <div className="typing-dot" />
-              </div>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-                {typingUsers.join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
-              </span>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
       )}
 
       {/* Input Footer */}
-      {tab !== 'followers' || activeDmUser ? (
+      {activeDmUser ? (
         <div className="px-4 py-3 border-t border-white/10 bg-slate-900/95 backdrop-blur-lg">
           {user?.isGuest ? (
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '8px 0' }}>
@@ -268,20 +168,17 @@ export default function ChatPage() {
           ) : (
             <div className="flex gap-3 items-center">
               <input
-                value={activeDmUser ? dmText : text}
-                onChange={e => {
-                  if (activeDmUser) setDmText(e.target.value);
-                  else { setText(e.target.value); handleTyping(); }
-                }}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (activeDmUser ? sendDm() : send())}
-                placeholder={activeDmUser ? `Message ${activeDmUser.username}...` : "Message everyone..."}
+                value={dmText}
+                onChange={e => setDmText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendDm()}
+                placeholder={`Message ${activeDmUser.username}...`}
                 className="glass-input flex-1"
                 style={{ borderRadius: 100, padding: '12px 18px', fontSize: 13.5 }}
                 maxLength={500}
               />
               <button
-                onClick={activeDmUser ? sendDm : send}
-                disabled={activeDmUser ? !dmText.trim() : !text.trim()}
+                onClick={sendDm}
+                disabled={!dmText.trim()}
                 className="btn-primary flex items-center justify-center transition-transform active:scale-95"
                 style={{ borderRadius: 50, width: 46, height: 46, padding: 0 }}
               >
