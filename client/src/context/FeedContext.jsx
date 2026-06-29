@@ -64,7 +64,15 @@ export function FeedProvider({ children }) {
   const isFirstMountRef = useRef(true);
   const lastSeekTimeRef = useRef(0);
   const currentVideoIdRef = useRef(null);
+  const prevActiveIndexRef = useRef(activeIndex);
   currentVideoIdRef.current = songs[activeIndex]?.videoId;
+
+  if (prevActiveIndexRef.current !== activeIndex) {
+    prevActiveIndexRef.current = activeIndex;
+    setElapsed(0);
+    setBaseElapsed(0);
+    lastSeekTimeRef.current = 0;
+  }
 
   // WebRTC Voice Chat State
   const [voiceJoined, setVoiceJoined] = useState(false);
@@ -591,7 +599,7 @@ export function FeedProvider({ children }) {
 
   const iframeSrc = useMemo(() => {
     if (!currentVideoId) return '';
-    const initialStart = Math.floor(baseElapsed || elapsed || 0);
+    const initialStart = isFirstMountRef.current ? Math.floor(baseElapsed || elapsed || 0) : 0;
     return `https://www.youtube.com/embed/${currentVideoId}?autoplay=1&controls=0&disablekb=1&playsinline=1&enablejsapi=1&start=${initialStart}&origin=${encodeURIComponent(window.location.origin)}`;
   }, [currentVideoId]);
 
