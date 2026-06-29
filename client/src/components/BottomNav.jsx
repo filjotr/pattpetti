@@ -1,14 +1,14 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, Radio, User, Bell } from 'lucide-react';
+import { Home, Search, Radio, User, MessageCircle } from 'lucide-react';
 import { useSocial } from '../context/SocialContext';
 
 const TABS = [
-  { path: '/feed',          icon: Home,   label: 'Home',   id: 'feed' },
-  { path: '/search',        icon: Search, label: 'Search', id: 'search' },
-  { path: '/rooms',         icon: Radio,  label: 'Rooms',  id: 'rooms' },
-  { path: '/notifications', icon: Bell,   label: 'Notifs', id: 'notifs' },
-  { path: '/profile',       icon: User,   label: 'Profile',id: 'profile' },
+  { path: '/feed', icon: Home, label: 'Home', id: 'feed' },
+  { path: '/search', icon: Search, label: 'Search', id: 'search' },
+  { path: '/rooms', icon: Radio, label: 'Rooms', id: 'rooms' },
+  { path: '/chat', icon: MessageCircle, label: 'Chat', id: 'chat' },
+  { path: '/profile', icon: User, label: 'Profile', id: 'profile' },
 ];
 
 export default function BottomNav() {

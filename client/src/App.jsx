@@ -14,6 +14,7 @@ import RoomsPage from './pages/RoomsPage';
 import RoomPage from './pages/RoomPage';
 import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
+import ChatPage from './pages/ChatPage';
 import AdminPage from './pages/AdminPage';
 import NotFoundPage from './pages/NotFoundPage';
 import InstallPrompt from './components/InstallPrompt';
@@ -65,6 +66,7 @@ function Layout() {
         <Route path="/profile" element={<AuthGuard><ProfilePage /></AuthGuard>} />
         <Route path="/profile/:userId" element={<AuthGuard><ProfilePage /></AuthGuard>} />
         <Route path="/notifications" element={<AuthGuard><NotificationsPage /></AuthGuard>} />
+        <Route path="/chat" element={<AuthGuard><ChatPage /></AuthGuard>} />
         <Route path="/admin" element={<AuthGuard><AdminPage /></AuthGuard>} />
         <Route path="/song/:vid" element={<AuthGuard><SongRedirect /></AuthGuard>} />
 

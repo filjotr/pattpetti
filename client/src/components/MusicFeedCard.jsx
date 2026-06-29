@@ -4,16 +4,14 @@ import VinylRecord from './VinylRecord';
 import WaveformAnim from './WaveformAnim';
 import SongActions from './SongActions';
 import CommentSheet from './CommentSheet';
-import ChatDrawer from './ChatDrawer';
 import ListenTogetherModal from './ListenTogetherModal';
 import { formatDuration, getAvatarUrl } from '../utils/config';
 import { Music2, Clock, Play, Pause, Mic, MicOff } from 'lucide-react';
 import { useFeed } from '../context/FeedContext';
 
 export default function MusicFeedCard({ song, isActive, index }) {
-  const { isPlaying, elapsed, togglePlay, seekTo, syncRoomCode, syncMembers, voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute } = useFeed();
+  const { isPlaying, isAudioPlaying, elapsed, togglePlay, seekTo, syncRoomCode, syncMembers, voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute } = useFeed();
   const [showComment, setShowComment] = useState(false);
-  const [showChatDrawer, setShowChatDrawer] = useState(false);
   const [showListenModal, setShowListenModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [localProgress, setLocalProgress] = useState(0);
@@ -167,22 +165,28 @@ export default function MusicFeedCard({ song, isActive, index }) {
         >
           <VinylRecord
             thumbnail={song?.thumbnail}
-            isPlaying={isPlaying && isActive}
+            isPlaying={isPlaying && isAudioPlaying && isActive}
             size={window.innerHeight < 700 ? 150 : (window.innerHeight < 800 ? 180 : 240)}
           />
-          {/* Play/Pause overlay icon */}
+          {/* Play/Pause / Buffering overlay icon */}
           <div 
-            className="absolute inset-0 flex items-center justify-center transition-opacity duration-300"
-            style={{ opacity: (!isPlaying && isActive) ? 1 : 0, background: 'rgba(0,0,0,0.3)', borderRadius: '50%' }}
+            className="absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none"
+            style={{ opacity: ((!isPlaying || !isAudioPlaying) && isActive) ? 1 : 0, background: 'rgba(0,0,0,0.3)', borderRadius: '50%' }}
           >
-            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
-              <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
-            </div>
+            {!isPlaying ? (
+              <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
+                <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
+              </div>
+            ) : !isAudioPlaying ? (
+              <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
+                <div className="w-8 h-8 border-3 border-teal-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : null}
           </div>
         </motion.div>
 
         <div className="scale-75 sm:scale-100">
-          <WaveformAnim isPlaying={isPlaying && isActive} />
+          <WaveformAnim isPlaying={isPlaying && isAudioPlaying && isActive} />
         </div>
 
         {/* Progress bar and Timer */}
@@ -232,7 +236,6 @@ export default function MusicFeedCard({ song, isActive, index }) {
           <SongActions
             song={song}
             onComment={() => setShowComment(true)}
-            onChat={() => setShowChatDrawer(true)}
             onListenTogether={() => setShowListenModal(true)}
           />
         </div>
@@ -249,13 +252,6 @@ export default function MusicFeedCard({ song, isActive, index }) {
       <AnimatePresence>
         {showListenModal && (
           <ListenTogetherModal song={song} onClose={() => setShowListenModal(false)} />
-        )}
-      </AnimatePresence>
-
-      {/* Global & Followers Chat Drawer */}
-      <AnimatePresence>
-        {showChatDrawer && (
-          <ChatDrawer song={song} onClose={() => setShowChatDrawer(false)} />
         )}
       </AnimatePresence>
     </div>

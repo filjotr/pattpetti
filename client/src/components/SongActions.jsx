@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share2, UserPlus, UserCheck, Users, MessageSquare } from 'lucide-react';
+import { Heart, MessageCircle, Share2, UserPlus, UserCheck, Users } from 'lucide-react';
 import { useFeed } from '../context/FeedContext';
 import { useSocial } from '../context/SocialContext';
 import { useAuth } from '../context/AuthContext';
 import { formatCount } from '../utils/config';
 
-export default function SongActions({ song, onComment, onChat, onListenTogether }) {
+export default function SongActions({ song, onComment, onListenTogether }) {
   const { likedSongs, likeCounts, likeSong } = useFeed();
   const { followingSet, followUser, sendListenInvite } = useSocial();
   const { user } = useAuth();
@@ -62,18 +62,7 @@ export default function SongActions({ song, onComment, onChat, onListenTogether 
         aria-label="Comments"
       >
         <MessageCircle size={26} />
-        <span className="action-btn-count">Comments</span>
-      </button>
-
-      {/* Chat / Followers DM */}
-      <button
-        id="btn-open-chat"
-        onClick={onChat}
-        className="action-btn"
-        aria-label="Chat & Friends DM"
-      >
-        <MessageSquare size={26} className="text-teal-400" />
-        <span className="action-btn-count text-teal-300 font-bold">Chat</span>
+        <span className="action-btn-count">{formatCount(song?.commentCount || 0)}</span>
       </button>
 
       {/* Share */}
@@ -84,10 +73,8 @@ export default function SongActions({ song, onComment, onChat, onListenTogether 
         aria-label="Share"
       >
         <Share2 size={26} />
-        <span className="action-btn-count">{shareMsg || 'Share'}</span>
+        {shareMsg && <span className="action-btn-count text-teal-300 font-bold">{shareMsg}</span>}
       </button>
-
-
 
       {/* Listen Together */}
       <button
@@ -100,7 +87,6 @@ export default function SongActions({ song, onComment, onChat, onListenTogether 
         aria-label="Listen Together"
       >
         <Users size={26} />
-        <span className="action-btn-count">Together</span>
       </button>
     </div>
   );

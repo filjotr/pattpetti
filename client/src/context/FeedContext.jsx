@@ -39,6 +39,7 @@ export function FeedProvider({ children }) {
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [baseElapsed, setBaseElapsed] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
@@ -120,6 +121,7 @@ export function FeedProvider({ children }) {
   }, [isPlaying]);
 
   useEffect(() => {
+    setIsAudioPlaying(false);
     setBaseElapsed(0);
     setStartTime(Date.now());
     setElapsed(0);
@@ -153,17 +155,60 @@ export function FeedProvider({ children }) {
     };
   }, [isPlaying, activeIndex]);
 
+  // Listen to postMessage from YouTube embed to know exact playerState and currentTime
   useEffect(() => {
-    if (isPlaying) {
+    const handleMessage = (event) => {
+      let data = event.data;
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch { return; }
+      }
+      if (!data || typeof data !== 'object') return;
+
+      if (data.event === 'infoDelivery' && data.info) {
+        if (typeof data.info.playerState === 'number') {
+          // 1 = playing, 2 = paused, 3 = buffering, -1 = unstarted, 0 = ended
+          setIsAudioPlaying(data.info.playerState === 1);
+        }
+        if (typeof data.info.currentTime === 'number') {
+          setElapsed(data.info.currentTime);
+          setBaseElapsed(data.info.currentTime);
+          setStartTime(Date.now());
+        }
+      } else if (data.event === 'onStateChange' && typeof data.info === 'number') {
+        setIsAudioPlaying(data.info === 1);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Ping YouTube iframe periodically to ensure state and time are synced
+  useEffect(() => {
+    if (!isPlaying) {
+      setIsAudioPlaying(false);
+      return;
+    }
+    const pingTimer = setInterval(() => {
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        const win = iframeRef.current.contentWindow;
+        win.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+        win.postMessage(JSON.stringify({ event: 'command', func: 'getCurrentTime', args: [] }), '*');
+        win.postMessage(JSON.stringify({ event: 'command', func: 'getPlayerState', args: [] }), '*');
+      }
+    }, 500);
+    return () => clearInterval(pingTimer);
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (isPlaying && isAudioPlaying) {
       intervalRef.current = setInterval(() => {
-        const newElapsed = baseElapsed + (Date.now() - startTime) / 1000;
-        setElapsed(newElapsed);
-      }, 1000);
+        setElapsed(prev => prev + 0.25);
+      }, 250);
     } else {
       clearInterval(intervalRef.current);
     }
     return () => clearInterval(intervalRef.current);
-  }, [isPlaying, baseElapsed, startTime]);
+  }, [isPlaying, isAudioPlaying]);
 
   // Auto-play next song when current finishes
   useEffect(() => {
@@ -494,7 +539,7 @@ export function FeedProvider({ children }) {
       loadFeed, likeSong, fetchLikeCount,
       setSongs,
       activeIndex, setActiveIndex, changeTrack,
-      isPlaying, setIsPlaying,
+      isPlaying, setIsPlaying, isAudioPlaying,
       elapsed, togglePlay,
       seekTo,
       syncRoomCode, setSyncRoomCode, syncMembers,
