@@ -45,7 +45,7 @@ export default function ListenTogetherModal({ song, onClose }) {
   const shareLink = `${window.location.origin}/#/feed?sync=${syncRoomCode || ''}`;
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 90 }}>
+    <div className="modal-overlay" style={{ zIndex: 1000 }}>
       <motion.div
         className="modal-box w-full max-w-md"
         initial={{ scale: 0.9, opacity: 0 }}

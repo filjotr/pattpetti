@@ -65,7 +65,8 @@ export default function CommentSheet({ song, onClose }) {
 
   return createPortal(
     <div 
-      className="fixed inset-0 z-50 flex flex-col justify-end" 
+      className="fixed inset-0 flex flex-col justify-end" 
+      style={{ zIndex: 1000 }}
       onClick={stopProp} 
       onPointerDown={stopProp} 
       onTouchStart={stopProp} 
@@ -73,13 +74,15 @@ export default function CommentSheet({ song, onClose }) {
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        style={{ zIndex: 1000 }}
         onClick={onClose}
       />
 
       <motion.div
-        className="relative z-50 flex flex-col shadow-2xl overflow-hidden"
+        className="relative flex flex-col shadow-2xl overflow-hidden"
         style={{
+          zIndex: 1001,
           height: '70dvh',
           background: 'rgba(13, 20, 40, 0.98)',
           borderTop: '1px solid rgba(255,255,255,0.15)',

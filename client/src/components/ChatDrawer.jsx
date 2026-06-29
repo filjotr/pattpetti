@@ -106,11 +106,11 @@ export default function ChatDrawer({ onClose, song }) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-70" onClick={onClose} style={{ zIndex: 70 }} />
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} style={{ zIndex: 1000 }} />
       <motion.div
         className="fixed bottom-0 left-0 right-0 flex flex-col"
         style={{
-          height: '65dvh', zIndex: 75,
+          height: '65dvh', zIndex: 1001,
           background: 'rgba(10, 18, 40, 0.98)',
           backdropFilter: 'blur(30px)',
           borderTop: '1px solid rgba(255,255,255,0.1)',
