@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { API_BASE_URL } from '../utils/config';
 import { useAuth } from './AuthContext';
 import { fetchTrendingByGenre } from '../utils/youtube';
@@ -570,6 +570,13 @@ export function FeedProvider({ children }) {
     }
   }, [activeIndex, songs]);
 
+  const currentVideoId = songs[activeIndex]?.videoId;
+  const iframeSrc = useMemo(() => {
+    if (!currentVideoId) return '';
+    const initialStart = Math.floor(baseElapsed || elapsed || 0);
+    return `https://www.youtube.com/embed/${currentVideoId}?autoplay=1&controls=0&disablekb=1&playsinline=1&enablejsapi=1&start=${initialStart}&origin=${encodeURIComponent(window.location.origin)}`;
+  }, [currentVideoId]);
+
   return (
     <FeedContext.Provider value={{
       songs, loading, nextPageToken,
@@ -587,12 +594,12 @@ export function FeedProvider({ children }) {
       {/* Hidden Audio Tag for Partner Voice */}
       <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
       {/* Global Audio Player for Feed */}
-      {songs[activeIndex]?.videoId && (
+      {currentVideoId && (
         <iframe
           ref={iframeRef}
           width="200"
           height="200"
-          src={`https://www.youtube.com/embed/${songs[activeIndex].videoId}?autoplay=1&controls=0&disablekb=1&playsinline=1&enablejsapi=1&start=${Math.floor(baseElapsed || elapsed || 0)}&origin=${encodeURIComponent(window.location.origin)}`}
+          src={iframeSrc}
           allow="autoplay; encrypted-media; picture-in-picture"
           style={{ position: 'fixed', top: '-1000px', opacity: 0.01, pointerEvents: 'none', zIndex: -100 }}
           title="global-feed-audio"
