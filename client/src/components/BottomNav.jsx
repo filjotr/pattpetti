@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Search, Radio, User, MessageCircle } from 'lucide-react';
 import { useSocial } from '../context/SocialContext';
+import { useFeed } from '../context/FeedContext';
 
 const TABS = [
   { path: '/feed', icon: Home, label: 'Home', id: 'feed' },
@@ -15,6 +16,19 @@ export default function BottomNav() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { unreadCount } = useSocial();
+  const { loadFeed, setActiveIndex } = useFeed();
+
+  const handleNavClick = (path, id) => {
+    if (id === 'feed' && pathname.startsWith('/feed')) {
+      setActiveIndex(0);
+      loadFeed(true);
+      const feedCont = document.querySelector('.feed-container');
+      if (feedCont) feedCont.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate(path);
+    }
+  };
 
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
@@ -24,7 +38,7 @@ export default function BottomNav() {
           <button
             key={id}
             id={`nav-${id}`}
-            onClick={() => navigate(path)}
+            onClick={() => handleNavClick(path, id)}
             className={`nav-item ${active ? 'active' : ''}`}
             aria-label={label}
           >

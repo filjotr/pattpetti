@@ -231,9 +231,25 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
             }}
             className="w-full"
           />
-          <div className="flex justify-between items-center mt-2 w-full" style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
-            <span>{formatTime(displayElapsed)}</span>
-            <span>{formatDuration(song?.duration)}</span>
+          <div className="flex justify-between items-center mt-3 w-full font-medium" style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+            <span className="w-12 text-left">{formatTime(displayElapsed)}</span>
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTogglePlay();
+              }}
+              className="w-10 h-10 rounded-full bg-teal-500/20 hover:bg-teal-500/30 border border-teal-400/50 flex items-center justify-center transition-transform active:scale-90 shadow-lg shadow-teal-500/10"
+              title={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? (
+                <Pause size={18} className="text-teal-300" />
+              ) : (
+                <Play size={18} className="text-teal-300 ml-0.5" />
+              )}
+            </button>
+
+            <span className="w-12 text-right">{formatDuration(song?.duration)}</span>
           </div>
         </div>
       </div>
