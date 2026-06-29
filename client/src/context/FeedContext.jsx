@@ -46,6 +46,7 @@ export function FeedProvider({ children }) {
   const iframeRef = useRef(null);
   const intervalRef = useRef(null);
   const isFirstMountRef = useRef(true);
+  const lastSeekTimeRef = useRef(0);
 
   // WebRTC Voice Chat State
   const [voiceJoined, setVoiceJoined] = useState(false);
@@ -170,9 +171,11 @@ export function FeedProvider({ children }) {
           setIsAudioPlaying(data.info.playerState === 1);
         }
         if (typeof data.info.currentTime === 'number') {
-          setElapsed(data.info.currentTime);
-          setBaseElapsed(data.info.currentTime);
-          setStartTime(Date.now());
+          if (Date.now() - lastSeekTimeRef.current > 1500) {
+            setElapsed(data.info.currentTime);
+            setBaseElapsed(data.info.currentTime);
+            setStartTime(Date.now());
+          }
         }
       } else if (data.event === 'onStateChange' && typeof data.info === 'number') {
         setIsAudioPlaying(data.info === 1);
@@ -322,8 +325,9 @@ export function FeedProvider({ children }) {
 
   const seekTo = useCallback((seconds, isRemote = false) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
+      lastSeekTimeRef.current = Date.now();
       iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: 'command', func: 'seekTo', args: [Math.floor(seconds), true] }),
+        JSON.stringify({ event: 'command', func: 'seekTo', args: [Number(seconds), true] }),
         '*'
       );
       setBaseElapsed(seconds);

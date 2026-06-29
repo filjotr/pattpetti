@@ -16,8 +16,8 @@ export default function MusicFeedCard({ song, isActive, index }) {
   const [isDragging, setIsDragging] = useState(false);
   const [localProgress, setLocalProgress] = useState(0);
 
-  const displayElapsed = isActive ? elapsed : 0;
   const totalSeconds = parseDuration(song?.duration);
+  const displayElapsed = isActive ? (isDragging ? (localProgress / 100) * totalSeconds : elapsed) : 0;
   const actualProgress = totalSeconds > 0 ? Math.min((displayElapsed / totalSeconds) * 100, 100) : 0;
   const progress = isDragging ? localProgress : actualProgress;
 
@@ -198,7 +198,12 @@ export default function MusicFeedCard({ song, isActive, index }) {
             type="range" 
             min="0" 
             max="100" 
+            step="0.1"
             value={progress || 0}
+            onPointerDown={() => {
+              setIsDragging(true);
+              setLocalProgress(actualProgress);
+            }}
             onTouchStart={() => {
               setIsDragging(true);
               setLocalProgress(actualProgress);
@@ -210,8 +215,15 @@ export default function MusicFeedCard({ song, isActive, index }) {
             onPointerUp={handleSeekEnd}
             onTouchEnd={handleSeekEnd}
             onMouseUp={handleSeekEnd}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              setLocalProgress(val);
+              if (!isDragging && totalSeconds > 0) {
+                const newTime = (val / 100) * totalSeconds;
+                seekTo(newTime);
+              }
+            }}
             onInput={(e) => setLocalProgress(parseFloat(e.target.value))}
-            onChange={(e) => setLocalProgress(parseFloat(e.target.value))}
             style={{ 
               height: 4, borderRadius: 2, cursor: 'pointer',
               accentColor: 'var(--primary)',
