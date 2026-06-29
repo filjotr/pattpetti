@@ -5,16 +5,29 @@ import { useSocial } from '../context/SocialContext';
 import { useAuth } from '../context/AuthContext';
 import { formatCount } from '../utils/config';
 
+function getBaseCounts(videoId = '') {
+  let hash = 0;
+  for (let i = 0; i < videoId.length; i++) hash = (hash * 31 + videoId.charCodeAt(i)) % 100000;
+  const baseLikes = 1200 + (Math.abs(hash) % 45000);
+  const baseComments = 40 + (Math.abs(hash) % 800);
+  return { baseLikes, baseComments };
+}
+
 export default function SongActions({ song, onComment, onListenTogether }) {
   const { likedSongs, likeCounts, commentCounts, likeSong } = useFeed();
   const { followingSet, followUser, sendListenInvite } = useSocial();
   const { user } = useAuth();
   const [shareMsg, setShareMsg] = useState('');
 
-  const vid = song?.videoId;
+  const vid = song?.videoId || '';
   const isLiked = likedSongs.has(vid);
-  const likeCount = likeCounts[vid] || 0;
-  const commentCount = (commentCounts && commentCounts[vid] !== undefined) ? commentCounts[vid] : (song?.commentCount || 0);
+  const { baseLikes, baseComments } = getBaseCounts(vid);
+
+  const dbLikeCount = likeCounts[vid] !== undefined ? likeCounts[vid] : 0;
+  const totalLikeCount = baseLikes + dbLikeCount;
+
+  const dbCommentCount = (commentCounts && commentCounts[vid] !== undefined) ? commentCounts[vid] : (song?.commentCount || 0);
+  const totalCommentCount = baseComments + dbCommentCount;
 
   const handleLike = () => {
     likeSong(song);
@@ -51,7 +64,7 @@ export default function SongActions({ song, onComment, onListenTogether }) {
           fill={isLiked ? '#f43f5e' : 'none'}
           className={`transition-transform ${isLiked ? 'scale-110' : ''}`}
         />
-        <span className="action-btn-count">{formatCount(likeCount)}</span>
+        <span className="action-btn-count">{formatCount(totalLikeCount)}</span>
       </button>
 
       {/* Comment */}
@@ -62,7 +75,7 @@ export default function SongActions({ song, onComment, onListenTogether }) {
         aria-label="Comments"
       >
         <MessageCircle size={26} />
-        <span className="action-btn-count">{formatCount(commentCount)}</span>
+        <span className="action-btn-count">{formatCount(totalCommentCount)}</span>
       </button>
 
       {/* Share */}

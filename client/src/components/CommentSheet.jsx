@@ -105,7 +105,15 @@ export default function CommentSheet({ song, onClose }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0 bg-slate-900/50">
           <div className="flex items-center gap-2.5">
             <MessageCircle size={20} className="text-teal-400" />
-            <span className="font-bold text-base text-white">Comments ({comments.length})</span>
+            <span className="font-bold text-base text-white">
+              Comments ({(() => {
+                let hash = 0;
+                const vid = song?.videoId || '';
+                for (let i = 0; i < vid.length; i++) hash = (hash * 31 + vid.charCodeAt(i)) % 100000;
+                const base = 40 + (Math.abs(hash) % 800);
+                return base + comments.length;
+              })()})
+            </span>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
             <X size={18} />
