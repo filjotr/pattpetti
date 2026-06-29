@@ -200,30 +200,26 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
             max="100" 
             step="0.1"
             value={progress || 0}
-            onPointerDown={() => {
-              setIsDragging(true);
-              setLocalProgress(actualProgress);
-            }}
-            onTouchStart={() => {
-              setIsDragging(true);
-              setLocalProgress(actualProgress);
-            }}
-            onMouseDown={() => {
-              setIsDragging(true);
-              setLocalProgress(actualProgress);
-            }}
-            onPointerUp={handleSeekEnd}
-            onTouchEnd={handleSeekEnd}
-            onMouseUp={handleSeekEnd}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerUp={() => setIsDragging(false)}
+            onTouchEnd={() => setIsDragging(false)}
+            onMouseUp={() => setIsDragging(false)}
             onChange={(e) => {
               const val = parseFloat(e.target.value);
               setLocalProgress(val);
-              if (!isDragging && totalSeconds > 0) {
+              setIsDragging(false);
+              if (totalSeconds > 0) {
                 const newTime = (val / 100) * totalSeconds;
                 seekTo(newTime);
               }
             }}
-            onInput={(e) => setLocalProgress(parseFloat(e.target.value))}
+            onInput={(e) => {
+              const val = parseFloat(e.target.value);
+              setLocalProgress(val);
+              setIsDragging(true);
+            }}
             style={{ 
               height: 4, borderRadius: 2, cursor: 'pointer',
               accentColor: 'var(--primary)',
@@ -231,25 +227,9 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
             }}
             className="w-full"
           />
-          <div className="flex justify-between items-center mt-3 w-full font-medium" style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-            <span className="w-12 text-left">{formatTime(displayElapsed)}</span>
-            
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleTogglePlay();
-              }}
-              className="w-10 h-10 rounded-full bg-teal-500/20 hover:bg-teal-500/30 border border-teal-400/50 flex items-center justify-center transition-transform active:scale-90 shadow-lg shadow-teal-500/10"
-              title={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? (
-                <Pause size={18} className="text-teal-300" />
-              ) : (
-                <Play size={18} className="text-teal-300 ml-0.5" />
-              )}
-            </button>
-
-            <span className="w-12 text-right">{formatDuration(song?.duration)}</span>
+          <div className="flex justify-between items-center mt-2 w-full" style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+            <span>{formatTime(displayElapsed)}</span>
+            <span>{formatDuration(song?.duration)}</span>
           </div>
         </div>
       </div>

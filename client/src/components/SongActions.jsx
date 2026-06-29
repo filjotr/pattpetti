@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { formatCount } from '../utils/config';
 
 export default function SongActions({ song, onComment, onListenTogether }) {
-  const { likedSongs, likeCounts, likeSong } = useFeed();
+  const { likedSongs, likeCounts, commentCounts, likeSong } = useFeed();
   const { followingSet, followUser, sendListenInvite } = useSocial();
   const { user } = useAuth();
   const [shareMsg, setShareMsg] = useState('');
@@ -14,6 +14,7 @@ export default function SongActions({ song, onComment, onListenTogether }) {
   const vid = song?.videoId;
   const isLiked = likedSongs.has(vid);
   const likeCount = likeCounts[vid] || 0;
+  const commentCount = (commentCounts && commentCounts[vid] !== undefined) ? commentCounts[vid] : (song?.commentCount || 0);
 
   const handleLike = () => {
     likeSong(song);
@@ -61,7 +62,7 @@ export default function SongActions({ song, onComment, onListenTogether }) {
         aria-label="Comments"
       >
         <MessageCircle size={26} />
-        <span className="action-btn-count">{formatCount(song?.commentCount || 0)}</span>
+        <span className="action-btn-count">{formatCount(commentCount)}</span>
       </button>
 
       {/* Share */}

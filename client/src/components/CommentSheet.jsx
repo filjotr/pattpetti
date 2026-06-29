@@ -4,11 +4,13 @@ import { motion } from 'framer-motion';
 import { X, Send, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { useFeed } from '../context/FeedContext';
 import { API_BASE_URL, getAvatarUrl, timeAgo } from '../utils/config';
 
 export default function CommentSheet({ song, onClose }) {
   const { user, token } = useAuth();
   const { socket } = useSocket();
+  const { setCommentCounts } = useFeed();
   const [comments, setComments] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,12 @@ export default function CommentSheet({ song, onClose }) {
       .then(d => { setComments(d.comments || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [song?.videoId, token]);
+
+  useEffect(() => {
+    if (song?.videoId && comments && setCommentCounts) {
+      setCommentCounts(prev => ({ ...prev, [song.videoId]: comments.length }));
+    }
+  }, [comments, song?.videoId, setCommentCounts]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

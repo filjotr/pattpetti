@@ -44,11 +44,14 @@ router.post('/like/:videoId', authMiddleware, async (req, res) => {
   }
 });
 
-// Get likes count
+// Get likes & comments count
 router.get('/:videoId/likes', async (req, res) => {
   try {
     const song = await Song.findOne({ videoId: req.params.videoId });
-    res.json({ count: song ? song.likes.length : 0 });
+    res.json({ 
+      count: song ? song.likes.length : 0,
+      commentCount: song ? song.comments.length : 0 
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

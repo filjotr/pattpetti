@@ -46,6 +46,7 @@ export function FeedProvider({ children }) {
   const [nextPageToken, setNextPageToken] = useState(null);
   const [likedSongs, setLikedSongs] = useState(new Set());
   const [likeCounts, setLikeCounts] = useState({});
+  const [commentCounts, setCommentCounts] = useState({});
 
   const { socket } = useSocket() || {};
   const [syncRoomCode, setSyncRoomCode] = useState(null);
@@ -347,15 +348,16 @@ export function FeedProvider({ children }) {
     }
   };
 
-  const fetchLikeCount = async (videoId) => {
-    if (likeCounts[videoId] !== undefined) return;
+  const fetchLikeCount = useCallback(async (videoId) => {
+    if (!videoId || likeCounts[videoId] !== undefined) return;
     try {
       const res = await fetch(`${API_BASE_URL}/songs/${videoId}/likes`);
       const data = await res.json();
-      setLikeCounts(prev => ({ ...prev, [videoId]: data.count || 0 }));
+      setLikeCounts(prev => ({ ...prev, [videoId]: data.count !== undefined ? data.count : 0 }));
+      setCommentCounts(prev => ({ ...prev, [videoId]: data.commentCount !== undefined ? data.commentCount : 0 }));
       if (data.likedByUser) setLikedSongs(prev => new Set([...prev, videoId]));
     } catch {}
-  };
+  }, [likeCounts]);
 
   const seekTo = useCallback((seconds, isRemote = false) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
@@ -571,6 +573,12 @@ export function FeedProvider({ children }) {
   }, [activeIndex, songs]);
 
   const currentVideoId = songs[activeIndex]?.videoId;
+  useEffect(() => {
+    if (currentVideoId) {
+      fetchLikeCount(currentVideoId);
+    }
+  }, [currentVideoId, fetchLikeCount]);
+
   const iframeSrc = useMemo(() => {
     if (!currentVideoId) return '';
     const initialStart = Math.floor(baseElapsed || elapsed || 0);
@@ -580,7 +588,7 @@ export function FeedProvider({ children }) {
   return (
     <FeedContext.Provider value={{
       songs, loading, nextPageToken,
-      likedSongs, likeCounts,
+      likedSongs, likeCounts, commentCounts, setCommentCounts,
       loadFeed, likeSong, fetchLikeCount,
       setSongs,
       activeIndex, setActiveIndex, changeTrack,
