@@ -22,12 +22,16 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
   const actualProgress = totalSeconds > 0 ? Math.min((displayElapsed / totalSeconds) * 100, 100) : 0;
   const progress = isDragging ? localProgress : actualProgress;
 
+  const lastSeekCommitRef = useRef(0);
+
   const handleTogglePlay = () => {
     if (!isActive) return;
     togglePlay();
   };
 
   const commitSeek = (valProgress) => {
+    if (Date.now() - lastSeekCommitRef.current < 300) return;
+    lastSeekCommitRef.current = Date.now();
     setIsDragging(false);
     if (totalSeconds > 0) {
       const newTime = (valProgress / 100) * totalSeconds;
