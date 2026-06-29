@@ -25,9 +25,23 @@ function parseDuration(str) {
   return 0;
 }
 
+function getCachedFeedState() {
+  try {
+    const raw = localStorage.getItem('pattpetti_cached_state');
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && Array.isArray(data.songs) && data.songs.length > 0) {
+        return data;
+      }
+    }
+  } catch {}
+  return null;
+}
+
 export function FeedProvider({ children }) {
   const { user, token } = useAuth();
-  const [songs, setSongs] = useState([]);
+  const cachedState = getCachedFeedState();
+  const [songs, setSongs] = useState(cachedState ? cachedState.songs : []);
   const [loading, setLoading] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
   const [likedSongs, setLikedSongs] = useState(new Set());
@@ -37,10 +51,10 @@ export function FeedProvider({ children }) {
   const [syncRoomCode, setSyncRoomCode] = useState(null);
   const [syncMembers, setSyncMembers] = useState([]);
 
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(cachedState ? (cachedState.activeIndex || 0) : 0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(cachedState ? (cachedState.elapsed || 0) : 0);
   const [baseElapsed, setBaseElapsed] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
   const iframeRef = useRef(null);
@@ -123,16 +137,35 @@ export function FeedProvider({ children }) {
 
   useEffect(() => {
     setIsAudioPlaying(false);
-    setBaseElapsed(0);
-    setStartTime(Date.now());
-    setElapsed(0);
     if (isFirstMountRef.current) {
       isFirstMountRef.current = false;
       setIsPlaying(false);
+      const cached = getCachedFeedState();
+      if (cached && typeof cached.elapsed === 'number' && cached.elapsed > 0) {
+        setElapsed(cached.elapsed);
+        setBaseElapsed(cached.elapsed);
+        return;
+      }
     } else {
       setIsPlaying(true);
     }
+    setBaseElapsed(0);
+    setStartTime(Date.now());
+    setElapsed(0);
   }, [activeIndex]);
+
+  useEffect(() => {
+    if (songs.length > 0 && activeIndex < songs.length) {
+      try {
+        localStorage.setItem('pattpetti_cached_state', JSON.stringify({
+          songs: songs.slice(0, 50),
+          activeIndex,
+          elapsed: Math.floor(elapsed),
+          timestamp: Date.now()
+        }));
+      } catch {}
+    }
+  }, [songs, activeIndex, Math.floor(elapsed)]);
 
   // Global auto-unlock to guarantee audio plays on any screen touch if browser blocked autoplay
   useEffect(() => {
@@ -147,14 +180,12 @@ export function FeedProvider({ children }) {
     window.addEventListener('pointerdown', forceUnlock, { passive: true });
     window.addEventListener('touchstart', forceUnlock, { passive: true });
     window.addEventListener('click', forceUnlock, { passive: true });
-    window.addEventListener('keydown', forceUnlock, { passive: true });
     return () => {
       window.removeEventListener('pointerdown', forceUnlock);
       window.removeEventListener('touchstart', forceUnlock);
       window.removeEventListener('click', forceUnlock);
-      window.removeEventListener('keydown', forceUnlock);
     };
-  }, [isPlaying, activeIndex]);
+  }, [isPlaying, activeIndex, isAudioPlaying]);
 
   // Listen to postMessage from YouTube embed to know exact playerState and currentTime
   useEffect(() => {
@@ -189,6 +220,9 @@ export function FeedProvider({ children }) {
   useEffect(() => {
     if (!isPlaying) {
       setIsAudioPlaying(false);
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+      }
       return;
     }
     const pingTimer = setInterval(() => {
@@ -558,7 +592,7 @@ export function FeedProvider({ children }) {
           ref={iframeRef}
           width="200"
           height="200"
-          src={`https://www.youtube.com/embed/${songs[activeIndex].videoId}?autoplay=1&controls=0&disablekb=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
+          src={`https://www.youtube.com/embed/${songs[activeIndex].videoId}?autoplay=1&controls=0&disablekb=1&playsinline=1&enablejsapi=1&start=${Math.floor(baseElapsed || elapsed || 0)}&origin=${encodeURIComponent(window.location.origin)}`}
           allow="autoplay; encrypted-media; picture-in-picture"
           style={{ position: 'fixed', top: '-1000px', opacity: 0.01, pointerEvents: 'none', zIndex: -100 }}
           title="global-feed-audio"

@@ -9,7 +9,7 @@ import { formatDuration, getAvatarUrl } from '../utils/config';
 import { Music2, Clock, Play, Pause, Mic, MicOff } from 'lucide-react';
 import { useFeed } from '../context/FeedContext';
 
-export default function MusicFeedCard({ song, isActive, index }) {
+export default function MusicFeedCard({ song, isActive, index, onOpenComment }) {
   const { isPlaying, isAudioPlaying, elapsed, togglePlay, seekTo, syncRoomCode, syncMembers, voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute } = useFeed();
   const [showComment, setShowComment] = useState(false);
   const [showListenModal, setShowListenModal] = useState(false);
@@ -247,18 +247,11 @@ export default function MusicFeedCard({ song, isActive, index }) {
           {/* Right: action buttons */}
           <SongActions
             song={song}
-            onComment={() => setShowComment(true)}
+            onComment={() => onOpenComment ? onOpenComment(song) : setShowComment(true)}
             onListenTogether={() => setShowListenModal(true)}
           />
         </div>
       </div>
-
-      {/* Comment sheet */}
-      <AnimatePresence>
-        {showComment && (
-          <CommentSheet song={song} onClose={() => setShowComment(false)} />
-        )}
-      </AnimatePresence>
 
       {/* Listen Together modal */}
       <AnimatePresence>

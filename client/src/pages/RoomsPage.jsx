@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, Lock, Unlock, Globe, ArrowRight, Radio, Copy, Check } from 'lucide-react';
+import { Plus, Users, Lock, Unlock, Globe, ArrowRight, Radio, Copy, Check, Trash2, CheckSquare, Square } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRoom } from '../context/RoomContext';
 import { API_BASE_URL } from '../utils/config';
@@ -19,6 +19,9 @@ export default function RoomsPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [copiedCode, setCopiedCode] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedRooms, setSelectedRooms] = useState([]);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
@@ -63,6 +66,31 @@ export default function RoomsPage() {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const toggleSelectRoom = (code) => {
+    setSelectedRooms(prev => 
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    );
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedRooms.length === 0) return;
+    setDeleting(true);
+    try {
+      await Promise.all(
+        selectedRooms.map(code => 
+          fetch(`${API_BASE_URL}/rooms/${code}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          })
+        )
+      );
+      setPublicRooms(prev => prev.filter(r => !selectedRooms.includes(r.code)));
+      setSelectedRooms([]);
+      setSelectMode(false);
+    } catch {}
+    setDeleting(false);
   };
 
   return (
@@ -149,9 +177,45 @@ export default function RoomsPage() {
 
       {/* Public rooms */}
       <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Globe size={16} color="#41AEA9" />
-          <h2 style={{ fontWeight: 700, fontSize: 15 }}>Public Rooms</h2>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Globe size={16} color="#41AEA9" />
+            <h2 style={{ fontWeight: 700, fontSize: 15 }}>Public Rooms</h2>
+          </div>
+          {publicRooms.length > 0 && (
+            <div className="flex items-center gap-2">
+              {selectMode ? (
+                <>
+                  <button
+                    onClick={() => { setSelectMode(false); setSelectedRooms([]); }}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteSelected}
+                    disabled={selectedRooms.length === 0 || deleting}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      selectedRooms.length > 0
+                        ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20 cursor-pointer'
+                        : 'bg-rose-500/30 text-white/40 cursor-not-allowed'
+                    }`}
+                  >
+                    <Trash2 size={13} />
+                    {deleting ? 'Deleting...' : `Delete (${selectedRooms.length})`}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setSelectMode(true)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Trash2 size={13} />
+                  Delete
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -164,34 +228,54 @@ export default function RoomsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {publicRooms.map(room => (
-              <div key={room._id} className="glass-card p-4 flex items-center gap-3">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="flex items-center gap-2">
-                    <p style={{ fontWeight: 700, fontSize: 14 }} className="truncate">{room.name}</p>
-                    {room.isPrivate ? <Lock size={12} color="rgba(255,255,255,0.3)" /> : null}
+            {publicRooms.map(room => {
+              const isSelected = selectedRooms.includes(room.code);
+              return (
+                <div 
+                  key={room._id} 
+                  onClick={() => selectMode && toggleSelectRoom(room.code)}
+                  className={`glass-card p-4 flex items-center gap-3 transition-all ${selectMode ? 'cursor-pointer hover:border-rose-500/50' : ''} ${isSelected ? 'border-rose-500 bg-rose-500/10' : ''}`}
+                >
+                  {selectMode && (
+                    <div className="flex-shrink-0">
+                      {isSelected ? (
+                        <CheckSquare size={18} className="text-rose-500" />
+                      ) : (
+                        <Square size={18} className="text-white/40" />
+                      )}
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flex items-center gap-2">
+                      <p style={{ fontWeight: 700, fontSize: 14 }} className="truncate">{room.name}</p>
+                      {room.isPrivate ? <Lock size={12} color="rgba(255,255,255,0.3)" /> : null}
+                    </div>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                      Host: {room.host?.username} · {room.members?.length || 0} members
+                    </p>
                   </div>
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
-                    Host: {room.host?.username} · {room.members?.length || 0} members
-                  </p>
+                  {!selectMode && (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); copyCode(room.code); }}
+                        className="btn-icon"
+                        style={{ width: 32, height: 32 }}
+                        title="Copy code"
+                      >
+                        {copiedCode === room.code ? <Check size={14} color="#41AEA9" /> : <Copy size={14} />}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleJoin(room.code); }}
+                        className="btn-primary"
+                        style={{ padding: '8px 16px', fontSize: 12, borderRadius: 8 }}
+                      >
+                        Join
+                      </button>
+                    </>
+                  )}
                 </div>
-                <button
-                  onClick={() => copyCode(room.code)}
-                  className="btn-icon"
-                  style={{ width: 32, height: 32 }}
-                  title="Copy code"
-                >
-                  {copiedCode === room.code ? <Check size={14} color="#41AEA9" /> : <Copy size={14} />}
-                </button>
-                <button
-                  onClick={() => handleJoin(room.code)}
-                  className="btn-primary"
-                  style={{ padding: '8px 16px', fontSize: 12, borderRadius: 8 }}
-                >
-                  Join
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

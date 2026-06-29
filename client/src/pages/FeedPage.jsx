@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import MusicFeedCard from '../components/MusicFeedCard';
+import CommentSheet from '../components/CommentSheet';
 import { useFeed } from '../context/FeedContext';
 import { useSocial } from '../context/SocialContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +12,7 @@ export default function FeedPage() {
   const { listenInvite, acceptInvite, declineInvite } = useSocial();
   const { user } = useAuth();
   const [showChat, setShowChat] = useState(false);
+  const [activeCommentSong, setActiveCommentSong] = useState(null);
   const containerRef = useRef(null);
   const loadedRef = useRef(false);
   const isRestoringRef = useRef(true);
@@ -99,7 +101,7 @@ export default function FeedPage() {
         ) : (
           songs.map((song, i) => (
             <div key={song.videoId + i} data-idx={i}>
-              <MusicFeedCard song={song} isActive={i === activeIndex} index={i} />
+              <MusicFeedCard song={song} isActive={i === activeIndex} index={i} onOpenComment={setActiveCommentSong} />
             </div>
           ))
         )}
@@ -143,6 +145,13 @@ export default function FeedPage() {
               </button>
             </div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Stable Comment Sheet outside timer re-renders */}
+      <AnimatePresence>
+        {activeCommentSong && (
+          <CommentSheet song={activeCommentSong} onClose={() => setActiveCommentSong(null)} />
         )}
       </AnimatePresence>
     </div>
