@@ -1,23 +1,42 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const getGuestUser = async () => {
+  let guest = await User.findOne({ username: 'Guest' });
+  if (!guest) {
+    guest = await User.create({
+      username: 'Guest',
+      email: 'guest@listentogether.local',
+      password: '',
+      isGuest: true,
+    });
+  }
+  return guest;
+};
+
 const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer '))
-      return res.status(401).json({ message: 'No token provided' });
+    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader === 'Bearer null' || authHeader === 'Bearer undefined') {
+      req.user = await getGuestUser();
+      return next();
+    }
 
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.userId).select('-password');
-    if (!user) return res.status(401).json({ message: 'User not found' });
+    if (!user) {
+      req.user = await getGuestUser();
+      return next();
+    }
     if (user.isBanned) return res.status(403).json({ message: 'Account banned' });
 
     req.user = user;
     next();
   } catch (err) {
-    res.status(401).json({ message: 'Invalid or expired token' });
+    req.user = await getGuestUser();
+    next();
   }
 };
 
@@ -27,4 +46,4 @@ const adminMiddleware = (req, res, next) => {
   next();
 };
 
-module.exports = { authMiddleware, adminMiddleware };
+module.exports = { authMiddleware, adminMiddleware, getGuestUser };

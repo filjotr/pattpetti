@@ -84,7 +84,7 @@ export default function ChatDrawer({ onClose, song }) {
   };
 
   const send = () => {
-    if (!text.trim() || !socket || user?.isGuest) return;
+    if (!text.trim() || !socket) return;
     socket.emit('global-send', { text: text.trim() });
     setText('');
     setTyping(false);
@@ -271,34 +271,28 @@ export default function ChatDrawer({ onClose, song }) {
         {/* Input Footer */}
         {tab !== 'followers' || activeDmUser ? (
           <div className="px-4 py-3 border-t border-white/10" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
-            {user?.isGuest ? (
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
-                Sign in to send messages
-              </p>
-            ) : (
-              <div className="flex gap-3 items-center">
-                <input
-                  value={activeDmUser ? dmText : text}
-                  onChange={e => {
-                    if (activeDmUser) setDmText(e.target.value);
-                    else { setText(e.target.value); handleTyping(); }
-                  }}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (activeDmUser ? sendDm() : send())}
-                  placeholder={activeDmUser ? `Message ${activeDmUser.username}...` : "Message everyone..."}
-                  className="glass-input flex-1"
-                  style={{ borderRadius: 100, padding: '10px 16px', fontSize: 13 }}
-                  maxLength={500}
-                />
-                <button
-                  onClick={activeDmUser ? sendDm : send}
-                  disabled={activeDmUser ? !dmText.trim() : !text.trim()}
-                  className="btn-primary"
-                  style={{ borderRadius: 50, width: 44, height: 44, padding: 0 }}
-                >
-                  <Send size={18} />
-                </button>
-              </div>
-            )}
+            <div className="flex gap-3 items-center">
+              <input
+                value={activeDmUser ? dmText : text}
+                onChange={e => {
+                  if (activeDmUser) setDmText(e.target.value);
+                  else { setText(e.target.value); handleTyping(); }
+                }}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (activeDmUser ? sendDm() : send())}
+                placeholder={activeDmUser ? `Message ${activeDmUser.username}...` : "Message everyone..."}
+                className="glass-input flex-1"
+                style={{ borderRadius: 100, padding: '10px 16px', fontSize: 13 }}
+                maxLength={500}
+              />
+              <button
+                onClick={activeDmUser ? sendDm : send}
+                disabled={activeDmUser ? !dmText.trim() : !text.trim()}
+                className="btn-primary"
+                style={{ borderRadius: 50, width: 44, height: 44, padding: 0 }}
+              >
+                <Send size={18} />
+              </button>
+            </div>
           </div>
         ) : null}
       </motion.div>

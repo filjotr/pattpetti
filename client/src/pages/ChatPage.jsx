@@ -161,31 +161,25 @@ export default function ChatPage() {
       {/* Input Footer */}
       {activeDmUser ? (
         <div className="px-4 py-3 border-t border-white/10 bg-slate-900/95 backdrop-blur-lg">
-          {user?.isGuest ? (
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '8px 0' }}>
-              Sign in to send messages
-            </p>
-          ) : (
-            <div className="flex gap-3 items-center">
-              <input
-                value={dmText}
-                onChange={e => setDmText(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendDm()}
-                placeholder={`Message ${activeDmUser.username}...`}
-                className="glass-input flex-1"
-                style={{ borderRadius: 100, padding: '12px 18px', fontSize: 13.5 }}
-                maxLength={500}
-              />
-              <button
-                onClick={sendDm}
-                disabled={!dmText.trim()}
-                className="btn-primary flex items-center justify-center transition-transform active:scale-95"
-                style={{ borderRadius: 50, width: 46, height: 46, padding: 0 }}
-              >
-                <Send size={18} />
-              </button>
-            </div>
-          )}
+          <div className="flex gap-3 items-center">
+            <input
+              value={dmText}
+              onChange={e => setDmText(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendDm()}
+              placeholder={`Message ${activeDmUser.username}...`}
+              className="glass-input flex-1"
+              style={{ borderRadius: 100, padding: '12px 18px', fontSize: 13.5 }}
+              maxLength={500}
+            />
+            <button
+              onClick={sendDm}
+              disabled={!dmText.trim()}
+              className="btn-primary flex items-center justify-center transition-transform active:scale-95"
+              style={{ borderRadius: 50, width: 46, height: 46, padding: 0 }}
+            >
+              <Send size={18} />
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

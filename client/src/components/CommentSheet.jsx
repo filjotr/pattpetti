@@ -38,13 +38,13 @@ export default function CommentSheet({ song, onClose }) {
   }, [socket, song?.videoId]);
 
   const send = async () => {
-    if (!text.trim() || !token || user?.isGuest) return;
+    if (!text.trim()) return;
     const trimmed = text.trim();
     setText('');
     try {
       const res = await fetch(`${API_BASE_URL}/songs/${song.videoId}/comments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           text: trimmed,
           title: song.title,

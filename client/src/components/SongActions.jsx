@@ -16,7 +16,6 @@ export default function SongActions({ song, onComment, onListenTogether }) {
   const likeCount = likeCounts[vid] || 0;
 
   const handleLike = () => {
-    if (user?.isGuest) return;
     likeSong(song);
   };
 
@@ -80,7 +79,6 @@ export default function SongActions({ song, onComment, onListenTogether }) {
       <button
         id="btn-listen-together"
         onClick={() => {
-          if (user?.isGuest) return;
           onListenTogether?.();
         }}
         className="action-btn"

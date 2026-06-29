@@ -3,23 +3,32 @@ const User = require('../models/User');
 const Room = require('../models/Room');
 const Message = require('../models/Message');
 
+const { getGuestUser } = require('../middleware/auth');
+
 const users = new Map(); // socketId -> User + Room info
 
 function setupSocketIO(io) {
   // Middleware to authenticate socket connections
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth.token;
-      if (!token) return next(new Error('Authentication error'));
+      const token = socket.handshake.auth?.token;
+      if (!token || token === 'null' || token === 'undefined') {
+        socket.user = await getGuestUser();
+        return next();
+      }
       
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId).select('username avatar');
-      if (!user) return next(new Error('User not found'));
+      if (!user) {
+        socket.user = await getGuestUser();
+        return next();
+      }
       
       socket.user = user;
       next();
     } catch (err) {
-      next(new Error('Authentication error'));
+      socket.user = await getGuestUser();
+      next();
     }
   });
 

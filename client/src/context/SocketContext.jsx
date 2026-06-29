@@ -12,7 +12,7 @@ export function SocketProvider({ children }) {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    if (!token || !user || user.isGuest) {
+    if (!user) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -22,7 +22,7 @@ export function SocketProvider({ children }) {
     }
 
     socketRef.current = io(SOCKET_URL, {
-      auth: { token },
+      auth: { token: token || 'null' },
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });
