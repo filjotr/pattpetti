@@ -15,7 +15,7 @@ const TABS = [
 export default function BottomNav() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { unreadCount } = useSocial();
+  const { unreadCount, unreadChatCount } = useSocial();
   const { loadFeed, setActiveIndex } = useFeed();
 
   const handleNavClick = (path, id) => {
@@ -46,6 +46,9 @@ export default function BottomNav() {
               <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
               {id === 'notifs' && unreadCount > 0 && (
                 <span className="badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+              )}
+              {id === 'chat' && unreadChatCount > 0 && (
+                <span className="badge">{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>
               )}
             </div>
             <span className="nav-label">{label}</span>

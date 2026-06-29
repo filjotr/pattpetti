@@ -96,7 +96,8 @@ function setupSocketIO(io) {
       
       for (const [sId, uData] of users.entries()) {
         if (uData.userId.toString() === targetUserId.toString() && sId !== socket.id) {
-          io.to(sId).emit('dm-notification', { sender: socket.user, text });
+          io.to(sId).emit('dm-message', { dmRoom, targetUserId, message: msg });
+          io.to(sId).emit('dm-notification', { sender: socket.user, text, timestamp: msg.timestamp });
         }
       }
     });

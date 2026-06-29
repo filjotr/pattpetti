@@ -1,6 +1,7 @@
 const express = require('express');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const Message = require('../models/Message');
 const { authMiddleware } = require('../middleware/auth');
 const router = express.Router();
 
@@ -72,9 +73,17 @@ router.get('/connections', authMiddleware, async (req, res) => {
     const user = await User.findById(req.user._id).populate('followers following', 'username avatar googleAvatar');
     if (!user) return res.status(404).json({ message: 'User not found' });
     const map = new Map();
-    (user.followers || []).forEach(f => { if (f && f._id) map.set(f._id.toString(), f); });
-    (user.following || []).forEach(f => { if (f && f._id) map.set(f._id.toString(), f); });
+    (user.followers || []).forEach(f => { if (f && f._id) map.set(f._id.toString(), f.toObject()); });
+    (user.following || []).forEach(f => { if (f && f._id) map.set(f._id.toString(), f.toObject()); });
     const connections = Array.from(map.values());
+
+    for (const conn of connections) {
+      const dmRoom = [req.user._id.toString(), conn._id.toString()].sort().join('_');
+      const lastMsg = await Message.findOne({ dmRoom }).sort({ timestamp: -1 }).select('timestamp').lean();
+      conn.lastMsgTimestamp = lastMsg && lastMsg.timestamp ? new Date(lastMsg.timestamp).getTime() : 0;
+    }
+    connections.sort((a, b) => (b.lastMsgTimestamp || 0) - (a.lastMsgTimestamp || 0));
+
     res.json({ connections });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

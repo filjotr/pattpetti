@@ -11,6 +11,7 @@ export function SocialProvider({ children }) {
   const { socket } = useSocket();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [followingSet, setFollowingSet] = useState(new Set());
   const [listenInvite, setListenInvite] = useState(null); // incoming invite
 
@@ -96,6 +97,12 @@ export function SocialProvider({ children }) {
       setUnreadCount(prev => prev + 1);
     });
 
+    socket.on('dm-notification', () => {
+      if (!window.location.hash.includes('/chat') && !window.location.pathname.includes('/chat')) {
+        setUnreadChatCount(prev => prev + 1);
+      }
+    });
+
     socket.on('listen-invite-received', (invite) => {
       setListenInvite(invite);
     });
@@ -112,6 +119,7 @@ export function SocialProvider({ children }) {
 
     return () => {
       socket.off('notification-new');
+      socket.off('dm-notification');
       socket.off('listen-invite-received');
       socket.off('listen-invite-declined');
       socket.off('redirect-to-room');
@@ -124,7 +132,7 @@ export function SocialProvider({ children }) {
 
   return (
     <SocialContext.Provider value={{
-      notifications, unreadCount, followingSet,
+      notifications, unreadCount, unreadChatCount, setUnreadChatCount, followingSet,
       listenInvite,
       loadNotifications, markAllRead,
       followUser, checkFollowing,

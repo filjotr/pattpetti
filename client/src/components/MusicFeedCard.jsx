@@ -10,13 +10,14 @@ import { Music2, Clock, Play, Pause, Mic, MicOff } from 'lucide-react';
 import { useFeed } from '../context/FeedContext';
 
 export default function MusicFeedCard({ song, isActive, index, onOpenComment }) {
-  const { isPlaying, isAudioPlaying, elapsed, togglePlay, seekTo, syncRoomCode, syncMembers, voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute } = useFeed();
+  const { isPlaying, isAudioPlaying, elapsed, togglePlay, durations, seekTo, syncRoomCode, syncMembers, voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute } = useFeed();
   const [showComment, setShowComment] = useState(false);
   const [showListenModal, setShowListenModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [localProgress, setLocalProgress] = useState(0);
 
-  const totalSeconds = parseDuration(song?.duration);
+  const liveDuration = durations?.[song?.videoId];
+  const totalSeconds = liveDuration || parseDuration(song?.duration);
   const displayElapsed = isActive ? (isDragging ? (localProgress / 100) * totalSeconds : elapsed) : 0;
   const actualProgress = totalSeconds > 0 ? Math.min((displayElapsed / totalSeconds) * 100, 100) : 0;
   const progress = isDragging ? localProgress : actualProgress;
@@ -26,11 +27,16 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
     togglePlay();
   };
 
-  const handleSeekEnd = () => {
-    if (!isActive || totalSeconds <= 0) return;
+  const commitSeek = (valProgress) => {
     setIsDragging(false);
-    const newTime = (localProgress / 100) * totalSeconds;
-    seekTo(newTime);
+    if (totalSeconds > 0) {
+      const newTime = (valProgress / 100) * totalSeconds;
+      seekTo(newTime);
+    }
+  };
+
+  const handleSeekEnd = () => {
+    commitSeek(localProgress);
   };
 
   return (
@@ -203,17 +209,13 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            onPointerUp={() => setIsDragging(false)}
-            onTouchEnd={() => setIsDragging(false)}
-            onMouseUp={() => setIsDragging(false)}
+            onPointerUp={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
+            onTouchEnd={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
+            onMouseUp={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
             onChange={(e) => {
               const val = parseFloat(e.target.value);
               setLocalProgress(val);
-              setIsDragging(false);
-              if (totalSeconds > 0) {
-                const newTime = (val / 100) * totalSeconds;
-                seekTo(newTime);
-              }
+              commitSeek(val);
             }}
             onInput={(e) => {
               const val = parseFloat(e.target.value);
@@ -229,7 +231,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
           />
           <div className="flex justify-between items-center mt-2 w-full" style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
             <span>{formatTime(displayElapsed)}</span>
-            <span>{formatDuration(song?.duration)}</span>
+            <span>{liveDuration ? formatTime(liveDuration) : formatDuration(song?.duration)}</span>
           </div>
         </div>
       </div>

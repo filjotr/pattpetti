@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, Users, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { useSocial } from '../context/SocialContext';
 import { API_BASE_URL, getAvatarUrl, timeAgo } from '../utils/config';
 
 export default function ChatPage() {
   const { user, token } = useAuth();
   const { socket } = useSocket();
+  const { setUnreadChatCount } = useSocial();
   
   // Followers & DM state
   const [connections, setConnections] = useState([]);
@@ -18,17 +20,41 @@ export default function ChatPage() {
   const dmBottomRef = useRef(null);
 
   useEffect(() => {
+    if (setUnreadChatCount) setUnreadChatCount(0);
+  }, [setUnreadChatCount]);
+
+  useEffect(() => {
     if (!socket) return;
     socket.on('dm-history', ({ targetUserId, history }) => {
       setDmMessages(history || []);
     });
+    const handleIncoming = (msgOrNotif) => {
+      const senderId = msgOrNotif?.sender?.userId || msgOrNotif?.sender?._id || msgOrNotif?.sender?.id;
+      if (senderId) {
+        setConnections(prev => {
+          const idx = prev.findIndex(c => (c._id || c.id) === senderId || (c._id || c.id) === (msgOrNotif.targetUserId));
+          if (idx > -1) {
+            const updated = { ...prev[idx], lastMsgTimestamp: Date.now() };
+            const newList = [...prev];
+            newList.splice(idx, 1);
+            return [updated, ...newList];
+          }
+          return prev;
+        });
+      }
+    };
     socket.on('dm-message', ({ targetUserId, message }) => {
       setDmMessages(p => [...p, message]);
+      handleIncoming(message);
+    });
+    socket.on('dm-notification', (notif) => {
+      handleIncoming(notif);
     });
 
     return () => {
       socket.off('dm-history');
       socket.off('dm-message');
+      socket.off('dm-notification');
     };
   }, [socket]);
 

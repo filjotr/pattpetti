@@ -58,10 +58,13 @@ export function FeedProvider({ children }) {
   const [elapsed, setElapsed] = useState(cachedState ? (cachedState.elapsed || 0) : 0);
   const [baseElapsed, setBaseElapsed] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
+  const [durations, setDurations] = useState({});
   const iframeRef = useRef(null);
   const intervalRef = useRef(null);
   const isFirstMountRef = useRef(true);
   const lastSeekTimeRef = useRef(0);
+  const currentVideoIdRef = useRef(null);
+  currentVideoIdRef.current = songs[activeIndex]?.videoId;
 
   // WebRTC Voice Chat State
   const [voiceJoined, setVoiceJoined] = useState(false);
@@ -202,6 +205,12 @@ export function FeedProvider({ children }) {
           // 1 = playing, 2 = paused, 3 = buffering, -1 = unstarted, 0 = ended
           setIsAudioPlaying(data.info.playerState === 1);
         }
+        if (typeof data.info.duration === 'number' && data.info.duration > 0 && currentVideoIdRef.current) {
+          setDurations(prev => {
+            if (prev[currentVideoIdRef.current] === data.info.duration) return prev;
+            return { ...prev, [currentVideoIdRef.current]: data.info.duration };
+          });
+        }
         if (typeof data.info.currentTime === 'number') {
           if (Date.now() - lastSeekTimeRef.current > 1500) {
             setElapsed(data.info.currentTime);
@@ -231,6 +240,7 @@ export function FeedProvider({ children }) {
         const win = iframeRef.current.contentWindow;
         win.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
         win.postMessage(JSON.stringify({ event: 'command', func: 'getCurrentTime', args: [] }), '*');
+        win.postMessage(JSON.stringify({ event: 'command', func: 'getDuration', args: [] }), '*');
         win.postMessage(JSON.stringify({ event: 'command', func: 'getPlayerState', args: [] }), '*');
       }
     }, 500);
@@ -593,7 +603,7 @@ export function FeedProvider({ children }) {
       setSongs,
       activeIndex, setActiveIndex, changeTrack,
       isPlaying, setIsPlaying, isAudioPlaying,
-      elapsed, togglePlay,
+      elapsed, togglePlay, durations,
       seekTo,
       syncRoomCode, setSyncRoomCode, syncMembers,
       voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute
