@@ -152,32 +152,26 @@ export default function CommentSheet({ song, onClose }) {
           className="px-4 py-3 border-t border-white/10 bg-slate-900/95 flex-shrink-0"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
         >
-          {user?.isGuest ? (
-            <p className="text-xs text-white/50 text-center py-2 bg-slate-800/50 rounded-xl">
-              Sign in to add a comment
-            </p>
-          ) : (
-            <div className="flex gap-2.5 items-center">
-              <img src={getAvatarUrl(user)} alt="" className="w-8 h-8 rounded-full border border-teal-400 object-cover flex-shrink-0" />
-              <div className="flex-1 flex items-center gap-2 bg-slate-800/80 border border-white/15 rounded-full px-4 py-1.5 focus-within:border-teal-400 transition-colors">
-                <input
-                  value={text}
-                  onChange={e => setText(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-                  placeholder="Add a comment..."
-                  className="bg-transparent border-none outline-none text-white text-xs flex-1 w-full placeholder:text-slate-400"
-                  maxLength={300}
-                />
-                <button 
-                  onClick={send} 
-                  disabled={!text.trim()} 
-                  className={`p-1.5 rounded-full transition-all ${text.trim() ? 'bg-teal-500 text-slate-950 scale-100' : 'text-slate-500 scale-90'}`}
-                >
-                  <Send size={14} />
-                </button>
-              </div>
+          <div className="flex gap-2.5 items-center">
+            <img src={getAvatarUrl(user)} alt="" className="w-8 h-8 rounded-full border border-teal-400 object-cover flex-shrink-0" />
+            <div className="flex-1 flex items-center gap-2 bg-slate-800/80 border border-white/15 rounded-full px-4 py-1.5 focus-within:border-teal-400 transition-colors">
+              <input
+                value={text}
+                onChange={e => setText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+                placeholder="Add a comment..."
+                className="bg-transparent border-none outline-none text-white text-xs flex-1 w-full placeholder:text-slate-400"
+                maxLength={300}
+              />
+              <button 
+                onClick={send} 
+                disabled={!text.trim()} 
+                className={`p-1.5 rounded-full transition-all ${text.trim() ? 'bg-teal-500 text-slate-950 scale-100' : 'text-slate-500 scale-90'}`}
+              >
+                <Send size={14} />
+              </button>
             </div>
-          )}
+          </div>
         </div>
       </motion.div>
     </div>,
