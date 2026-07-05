@@ -58,6 +58,10 @@ export function FeedProvider({ children }) {
 
   const [activeIndex, setActiveIndex] = useState(cachedState ? (cachedState.activeIndex || 0) : 0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(cachedState ? (cachedState.elapsed || 0) : 0);
   const [baseElapsed, setBaseElapsed] = useState(0);
@@ -241,6 +245,12 @@ export function FeedProvider({ children }) {
         }
       } else if (data.event === 'onStateChange' && typeof data.info === 'number') {
         setIsAudioPlaying(data.info === 1);
+        if (data.info === 2 && isPlayingRef.current && document.hidden) {
+          // If mobile Chrome or screen lock auto-paused the video while user wants it playing, force resume!
+          if (iframeRef.current && iframeRef.current.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+          }
+        }
         if (data.info === 0) {
           setActiveIndex(prev => {
             const nextIdx = prev + 1;
@@ -253,7 +263,22 @@ export function FeedProvider({ children }) {
       }
     };
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && isPlayingRef.current && iframeRef.current && iframeRef.current.contentWindow) {
+        setTimeout(() => {
+          if (isPlayingRef.current && iframeRef.current && iframeRef.current.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+          }
+        }, 300);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Ping YouTube iframe periodically to ensure state and time are synced
@@ -609,8 +634,18 @@ export function FeedProvider({ children }) {
           artist: currentSong.channel || 'Unknown Artist',
           artwork: [{ src: currentSong.thumbnail || '', sizes: '512x512', type: 'image/jpeg' }]
         });
-        navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
-        navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+        navigator.mediaSession.setActionHandler('play', () => {
+          setIsPlaying(true);
+          if (iframeRef.current && iframeRef.current.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+          }
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          setIsPlaying(false);
+          if (iframeRef.current && iframeRef.current.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+          }
+        });
         navigator.mediaSession.setActionHandler('nexttrack', () => {
           setActiveIndex(prev => prev + 1);
         });
