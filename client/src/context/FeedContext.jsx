@@ -321,9 +321,17 @@ export function FeedProvider({ children }) {
 
       setSongs(prev => {
         if (reset) {
-          return sharedSong ? [sharedSong, ...newSongs.filter(s => s.videoId !== sharedSong.videoId)] : newSongs;
+          const list = sharedSong ? [sharedSong, ...newSongs.filter(s => s.videoId !== sharedSong.videoId)] : newSongs;
+          const seen = new Set();
+          return list.filter(s => {
+            if (seen.has(s.videoId)) return false;
+            seen.add(s.videoId);
+            return true;
+          });
         }
-        return [...prev, ...newSongs];
+        const existingIds = new Set(prev.map(s => s.videoId));
+        const uniqueNew = newSongs.filter(s => !existingIds.has(s.videoId));
+        return [...prev, ...uniqueNew];
       });
       setNextPageToken(npt);
       if (reset && sharedSong) {

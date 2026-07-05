@@ -38,13 +38,25 @@ router.get('/trending', async (req, res) => {
     const { genre } = req.query;
     const g = genre || 'Music';
     
-    // Create an array of possible queries to randomize the results
+    const year = new Date().getFullYear();
+    const prevYear = year - 1;
     const queries = [
-      `${g} new single music video 2024`,
-      `${g} latest hit song audio 2024`,
-      `latest ${g} songs 2024 single`,
-      `new ${g} tracks official audio`,
-      `${g} new songs this week`
+      `${g} latest hit songs ${year}`,
+      `${g} new release song ${year}`,
+      `${g} viral hit song audio`,
+      `top trending ${g} songs ${year}`,
+      `${g} super hit songs ${prevYear} ${year}`,
+      `latest ${g} melody hit songs`,
+      `new ${g} party dance hits ${year}`,
+      `${g} romantic hits audio`,
+      `${g} chartbusters official music video`,
+      `${g} viral instagram reel song full audio`,
+      `${g} independent music new single`,
+      `${g} latest lofi remix hit song`,
+      `best ${g} songs of ${year}`,
+      `new ${g} movie song official video ${year}`,
+      `${g} fast beat hits ${year}`,
+      `${g} acoustic live performance song`
     ];
     
     const randomQuery = queries[Math.floor(Math.random() * queries.length)];
@@ -60,7 +72,7 @@ router.get('/trending', async (req, res) => {
       [videos[i], videos[j]] = [videos[j], videos[i]];
     }
 
-    const songs = videos.slice(0, 15).map(v => parseSong(v, g));
+    const songs = videos.slice(0, 20).map(v => parseSong(v, g));
 
     res.json({ songs });
   } catch (err) {
