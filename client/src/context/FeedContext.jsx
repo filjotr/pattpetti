@@ -212,6 +212,9 @@ export function FeedProvider({ children }) {
         if (typeof data.info.playerState === 'number') {
           // 1 = playing, 2 = paused, 3 = buffering, -1 = unstarted, 0 = ended
           setIsAudioPlaying(data.info.playerState === 1);
+          if (data.info.playerState === 0) {
+            setActiveIndex(prev => prev + 1);
+          }
         }
         if (typeof data.info.duration === 'number' && data.info.duration > 0 && currentVideoIdRef.current) {
           setDurations(prev => {
@@ -228,6 +231,9 @@ export function FeedProvider({ children }) {
         }
       } else if (data.event === 'onStateChange' && typeof data.info === 'number') {
         setIsAudioPlaying(data.info === 1);
+        if (data.info === 0) {
+          setActiveIndex(prev => prev + 1);
+        }
       }
     };
     window.addEventListener('message', handleMessage);
@@ -594,6 +600,17 @@ export function FeedProvider({ children }) {
   useEffect(() => {
     if (currentVideoId) {
       fetchLikeCount(currentVideoId);
+    }
+    if (currentVideoId && !isFirstMountRef.current && iframeRef.current && iframeRef.current.contentWindow) {
+      // Switch track via YouTube JS API without reloading iframe! Keeps background autoplay active on Chrome.
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: 'loadVideoById', args: [currentVideoId, 0] }),
+        '*'
+      );
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+        '*'
+      );
     }
   }, [currentVideoId, fetchLikeCount]);
 
