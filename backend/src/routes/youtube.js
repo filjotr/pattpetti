@@ -41,38 +41,36 @@ router.get('/trending', async (req, res) => {
     const year = new Date().getFullYear();
     const prevYear = year - 1;
     const queries = [
-      `${g} latest hit songs ${year}`,
-      `${g} new release song ${year}`,
-      `${g} viral hit song audio`,
-      `top trending ${g} songs ${year}`,
-      `${g} super hit songs ${prevYear} ${year}`,
-      `latest ${g} melody hit songs`,
-      `new ${g} party dance hits ${year}`,
-      `${g} romantic hits audio`,
-      `${g} chartbusters official music video`,
-      `${g} viral instagram reel song full audio`,
-      `${g} independent music new single`,
-      `${g} latest lofi remix hit song`,
-      `best ${g} songs of ${year}`,
-      `new ${g} movie song official video ${year}`,
-      `${g} fast beat hits ${year}`,
-      `${g} acoustic live performance song`
+      `${g} hit songs ${year}`,
+      `${g} latest songs ${year}`,
+      `top ${g} songs`,
+      `${g} hit songs ${prevYear}`,
+      `${g} movie hit songs`,
+      `latest ${g} party hit songs`,
+      `${g} romantic hit songs`,
+      `best ${g} songs official video`,
+      `${g} chartbusters music video`,
+      `${g} melody hit songs`,
+      `new ${g} hit tracks`,
+      `${g} super hit songs`
     ];
     
     const randomQuery = queries[Math.floor(Math.random() * queries.length)];
     const results = await ytSearch(randomQuery);
     
     let videos = results.videos || [];
-    // Filter out long compilation videos and super short shorts (1.5 min to 7 mins)
-    videos = videos.filter(v => v.seconds && v.seconds >= 90 && v.seconds <= 420);
-
-    // Shuffle the results to get a random mix
-    for (let i = videos.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [videos[i], videos[j]] = [videos[j], videos[i]];
+    let filtered = videos.filter(v => v.seconds && v.seconds >= 60 && v.seconds <= 600);
+    if (filtered.length < 5) {
+      filtered = videos; // Fall back to unfiltered videos so we never run out of songs!
     }
 
-    const songs = videos.slice(0, 20).map(v => parseSong(v, g));
+    // Shuffle the results to get a random mix
+    for (let i = filtered.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+    }
+
+    const songs = filtered.slice(0, 25).map(v => parseSong(v, g));
 
     res.json({ songs });
   } catch (err) {

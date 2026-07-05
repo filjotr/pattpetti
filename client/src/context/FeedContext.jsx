@@ -42,6 +42,10 @@ export function FeedProvider({ children }) {
   const { user, token } = useAuth();
   const cachedState = getCachedFeedState();
   const [songs, setSongs] = useState(cachedState ? cachedState.songs : []);
+  const songsRef = useRef(songs);
+  useEffect(() => {
+    songsRef.current = songs;
+  }, [songs]);
   const [loading, setLoading] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
   const [likedSongs, setLikedSongs] = useState(new Set());
@@ -213,7 +217,13 @@ export function FeedProvider({ children }) {
           // 1 = playing, 2 = paused, 3 = buffering, -1 = unstarted, 0 = ended
           setIsAudioPlaying(data.info.playerState === 1);
           if (data.info.playerState === 0) {
-            setActiveIndex(prev => prev + 1);
+            setActiveIndex(prev => {
+              const nextIdx = prev + 1;
+              if (songsRef.current && nextIdx >= songsRef.current.length) {
+                return 0; // Wrap to start if we reached the end of the playlist!
+              }
+              return nextIdx;
+            });
           }
         }
         if (typeof data.info.duration === 'number' && data.info.duration > 0 && currentVideoIdRef.current) {
@@ -232,7 +242,13 @@ export function FeedProvider({ children }) {
       } else if (data.event === 'onStateChange' && typeof data.info === 'number') {
         setIsAudioPlaying(data.info === 1);
         if (data.info === 0) {
-          setActiveIndex(prev => prev + 1);
+          setActiveIndex(prev => {
+            const nextIdx = prev + 1;
+            if (songsRef.current && nextIdx >= songsRef.current.length) {
+              return 0;
+            }
+            return nextIdx;
+          });
         }
       }
     };
@@ -408,6 +424,7 @@ export function FeedProvider({ children }) {
   }, [socket, syncRoomCode, activeIndex, isPlaying, songs]);
 
   const changeTrack = useCallback((newIndex, isRemote = false) => {
+    if (newIndex < 0 || newIndex >= songs.length) return;
     setActiveIndex(newIndex);
     if (!isRemote && socket && syncRoomCode) {
       socket.emit('sync-feed-state', { activeIndex: newIndex, isPlaying: true, elapsed: 0, timestamp: Date.now(), song: songs[newIndex] });
