@@ -27,9 +27,34 @@ function parseDuration(str) {
 
 function getCachedFeedState() {
   try {
+    const now = Date.now();
+    const lastLoad = parseInt(sessionStorage.getItem('pattpetti_last_load') || '0', 10);
+    let count = parseInt(sessionStorage.getItem('pattpetti_refresh_count') || '0', 10);
+    
+    if (now - lastLoad < 6000) {
+      count += 1;
+    } else {
+      count = 1;
+    }
+    
+    sessionStorage.setItem('pattpetti_last_load', String(now));
+    sessionStorage.setItem('pattpetti_refresh_count', String(count));
+
+    // If refreshed 2 or more times quickly (or if cache is older than 30 mins), clear cache!
+    if (count >= 2) {
+      console.log('Double refresh detected! Clearing song cache to load new songs...');
+      localStorage.removeItem('pattpetti_cached_state');
+      sessionStorage.setItem('pattpetti_refresh_count', '0');
+      return null;
+    }
+
     const raw = localStorage.getItem('pattpetti_cached_state');
     if (raw) {
       const data = JSON.parse(raw);
+      if (data.timestamp && now - data.timestamp > 1800000) {
+        localStorage.removeItem('pattpetti_cached_state');
+        return null;
+      }
       if (data && Array.isArray(data.songs) && data.songs.length > 0) {
         return data;
       }
@@ -339,6 +364,9 @@ export function FeedProvider({ children }) {
   const loadFeed = useCallback(async (reset = false) => {
     if (loading) return;
     setLoading(true);
+    if (reset) {
+      try { localStorage.removeItem('pattpetti_cached_state'); } catch {}
+    }
     try {
       const interests = user?.interests || ['English'];
       const pageToken = reset ? '' : (nextPageToken || '');
