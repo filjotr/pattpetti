@@ -32,13 +32,41 @@ function parseSong(item, category = 'English') {
 }
 
 export async function fetchTrendingByGenre(interests = ['English'], pageToken = '') {
-  const genre = interests[Math.floor(Math.random() * interests.length)] || 'English';
+  const genres = Array.isArray(interests) && interests.length > 0 ? interests : ['English'];
+  // Take up to 3 random selected genres per fetch to keep network fast and diverse
+  const selectedGenres = [...genres].sort(() => 0.5 - Math.random()).slice(0, Math.min(3, genres.length));
 
   try {
-    const res = await fetch(`${API_BASE_URL}/youtube/trending?genre=${encodeURIComponent(genre)}`);
-    const data = await res.json();
-    if (data.songs && data.songs.length > 0) {
-      return { songs: data.songs, nextPageToken: `next-page-${Date.now()}` };
+    const promises = selectedGenres.map(genre =>
+      fetch(`${API_BASE_URL}/youtube/trending?genre=${encodeURIComponent(genre)}`)
+        .then(res => res.json())
+        .catch(() => ({ songs: [] }))
+    );
+    const results = await Promise.all(promises);
+    
+    let allSongs = [];
+    results.forEach(data => {
+      if (data.songs && Array.isArray(data.songs)) {
+        allSongs.push(...data.songs);
+      }
+    });
+
+    if (allSongs.length > 0) {
+      // Deduplicate by videoId
+      const seen = new Set();
+      const uniqueSongs = allSongs.filter(s => {
+        if (seen.has(s.videoId)) return false;
+        seen.add(s.videoId);
+        return true;
+      });
+
+      // Shuffle the combined multi-language playlist!
+      for (let i = uniqueSongs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [uniqueSongs[i], uniqueSongs[j]] = [uniqueSongs[j], uniqueSongs[i]];
+      }
+
+      return { songs: uniqueSongs, nextPageToken: `next-page-${Date.now()}` };
     }
   } catch (err) {
     console.error('YouTube fetch error:', err);

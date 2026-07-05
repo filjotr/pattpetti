@@ -30,9 +30,9 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
   };
 
   const commitSeek = (valProgress) => {
-    if (Date.now() - lastSeekCommitRef.current < 300) return;
-    lastSeekCommitRef.current = Date.now();
     setIsDragging(false);
+    if (Date.now() - lastSeekCommitRef.current < 250) return;
+    lastSeekCommitRef.current = Date.now();
     if (totalSeconds > 0) {
       const newTime = (valProgress / 100) * totalSeconds;
       seekTo(newTime);
@@ -219,7 +219,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
             onChange={(e) => {
               const val = parseFloat(e.target.value);
               setLocalProgress(val);
-              commitSeek(val);
+              setIsDragging(true);
             }}
             onInput={(e) => {
               const val = parseFloat(e.target.value);
