@@ -15,6 +15,23 @@ function parseSong(video, category) {
   };
 }
 
+function isSingleSong(v) {
+  if (!v || !v.seconds || v.seconds < 75 || v.seconds > 380) return false;
+  const title = (v.title || '').toLowerCase();
+  const author = (v.author?.name || '').toLowerCase();
+  const blockWords = [
+    'jukebox', 'compilation', 'mashup', 'nonstop', 'non stop',
+    'hits of', 'best of', 'all songs', 'full album', 'collection',
+    'mega hit', 'top 10', 'top 20', 'top 30', 'top 50', 'top 100',
+    '1 hour', '2 hour', '3 hour', 'hours', 'hrs', 'lofi mix',
+    'medley', 'juke box', 'audio jukebox', 'evergreen hits'
+  ];
+  for (const word of blockWords) {
+    if (title.includes(word) || author.includes(word)) return false;
+  }
+  return true;
+}
+
 router.get('/search', async (req, res) => {
   try {
     const { q } = req.query;
@@ -22,8 +39,7 @@ router.get('/search', async (req, res) => {
 
     const results = await ytSearch(`${q} song audio`);
     let videos = results.videos || [];
-    // Filter out long compilation videos and super short shorts (1.5 min to 7 mins)
-    videos = videos.filter(v => v.seconds && v.seconds >= 90 && v.seconds <= 420);
+    videos = videos.filter(isSingleSong);
     const songs = videos.slice(0, 15).map(v => parseSong(v, 'Search'));
 
     res.json({ songs });
@@ -59,9 +75,15 @@ router.get('/trending', async (req, res) => {
     const results = await ytSearch(randomQuery);
     
     let videos = results.videos || [];
-    let filtered = videos.filter(v => v.seconds && v.seconds >= 60 && v.seconds <= 600);
+    let filtered = videos.filter(isSingleSong);
     if (filtered.length < 5) {
-      filtered = videos; // Fall back to unfiltered videos so we never run out of songs!
+      // Fallback: relax duration slightly up to 450s (7.5 mins), but STILL block jukeboxes and compilations!
+      filtered = videos.filter(v => {
+        if (!v || !v.seconds || v.seconds < 60 || v.seconds > 450) return false;
+        const title = (v.title || '').toLowerCase();
+        const author = (v.author?.name || '').toLowerCase();
+        return !title.includes('jukebox') && !title.includes('compilation') && !title.includes('mashup') && !title.includes('album') && !title.includes('nonstop') && !author.includes('jukebox');
+      });
     }
 
     // Shuffle the results to get a random mix
