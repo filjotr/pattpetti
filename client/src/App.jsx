@@ -15,6 +15,7 @@ import RoomPage from './pages/RoomPage';
 import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import ChatPage from './pages/ChatPage';
+import AdminPage from './pages/AdminPage';
 import NotFoundPage from './pages/NotFoundPage';
 import InstallPrompt from './components/InstallPrompt';
 import { App as CapacitorApp } from '@capacitor/app';

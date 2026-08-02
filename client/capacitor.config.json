@@ -4,7 +4,7 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://pattpetti-app.onrender.com",
+    "url": "https://pattpetti-app.onrender.com/",
     "cleartext": true
   }
 }
