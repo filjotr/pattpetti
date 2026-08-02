@@ -1,0 +1,10 @@
+{
+  "appId": "com.pattpetti.app",
+  "appName": "pattpetti",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://pattpetti-app.onrender.com/",
+    "cleartext": true
+  }
+}

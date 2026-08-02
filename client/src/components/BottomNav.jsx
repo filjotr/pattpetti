@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Home, Search, Radio, User, MessageCircle } from 'lucide-react';
 import { useSocial } from '../context/SocialContext';
 import { useFeed } from '../context/FeedContext';
@@ -39,10 +40,17 @@ export default function BottomNav() {
             key={id}
             id={`nav-${id}`}
             onClick={() => handleNavClick(path, id)}
-            className={`nav-item ${active ? 'active' : ''}`}
+            className={`nav-item relative ${active ? 'active' : ''}`}
             aria-label={label}
           >
-            <div className="relative">
+            {active && (
+              <motion.div
+                layoutId="navPill"
+                className="absolute inset-0 bg-purple-500/10 rounded-2xl"
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+            <div className="relative z-10 flex flex-col items-center">
               <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
               {id === 'notifs' && unreadCount > 0 && (
                 <span className="badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
@@ -50,8 +58,8 @@ export default function BottomNav() {
               {id === 'chat' && unreadChatCount > 0 && (
                 <span className="badge">{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>
               )}
+              <span className="nav-label mt-1">{label}</span>
             </div>
-            <span className="nav-label">{label}</span>
           </button>
         );
       })}

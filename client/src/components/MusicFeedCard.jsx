@@ -68,11 +68,11 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
           <div className="flex items-center gap-2">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #41AEA9, #A6F6F1)' }}
+              style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', boxShadow: '0 4px 12px var(--primary-glow)' }}
             >
-              <Music2 size={16} color="#0F172A" />
+              <Music2 size={16} color="#ffffff" />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5, color: '#A6F6F1' }}>
+            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: 0.5, color: 'var(--text)' }}>
               {syncRoomCode ? 'Synced Live Feed' : 'Listen With Friends'}
             </span>
           </div>
@@ -129,30 +129,31 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
         <div className="flex-1 min-w-0 pointer-events-auto">
           <motion.h2
             key={song?.videoId}
-            initial={{ y: -20, opacity: 0 }}
+            initial={{ y: -10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.1, type: "spring", stiffness: 100 }}
             style={{
-              fontSize: 20, fontWeight: 800, color: '#fff',
-              lineHeight: 1.25, marginBottom: 6,
-              textShadow: '0 2px 12px rgba(0,0,0,0.6)',
+              fontSize: 24, fontWeight: 900, color: 'var(--text)',
+              lineHeight: 1.2, marginBottom: 4,
+              textShadow: '0 4px 20px rgba(0,0,0,0.8)',
             }}
-            className="line-clamp-2"
+            className="line-clamp-2 tracking-tight"
           >
             {song?.title || 'Unknown Song'}
           </motion.h2>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginBottom: 4 }}>
+          <p style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
             {song?.channel || 'Unknown Artist'}
           </p>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className="flex flex-wrap gap-2 mt-3">
             {(song?.hashtags || ['#music']).map(tag => (
               <span
                 key={tag}
                 style={{
-                  fontSize: 11, color: '#A6F6F1', fontWeight: 600,
-                  background: 'rgba(65,174,169,0.15)',
-                  padding: '3px 8px', borderRadius: 100,
-                  border: '1px solid rgba(65,174,169,0.25)',
+                  fontSize: 12, color: 'var(--text)', fontWeight: 600,
+                  background: 'rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(10px)',
+                  padding: '4px 10px', borderRadius: 100,
+                  border: '1px solid var(--border)',
                 }}
               >
                 {tag}
@@ -181,15 +182,15 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
           {/* Play/Pause / Buffering overlay icon */}
           <div 
             className="absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none"
-            style={{ opacity: ((!isPlaying || !isAudioPlaying) && isActive) ? 1 : 0, background: 'rgba(0,0,0,0.3)', borderRadius: '50%' }}
+            style={{ opacity: ((!isPlaying || !isAudioPlaying) && isActive) ? 1 : 0, background: 'rgba(0,0,0,0.4)', borderRadius: '50%' }}
           >
             {!isPlaying ? (
-              <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.1)]">
                 <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
               </div>
             ) : !isAudioPlaying ? (
-              <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
-                <div className="w-8 h-8 border-3 border-teal-400 border-t-transparent rounded-full animate-spin" />
+              <div className="w-16 h-16 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center shadow-lg">
+                <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : null}
           </div>

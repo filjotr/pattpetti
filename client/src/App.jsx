@@ -15,9 +15,30 @@ import RoomPage from './pages/RoomPage';
 import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import ChatPage from './pages/ChatPage';
-import AdminPage from './pages/AdminPage';
 import NotFoundPage from './pages/NotFoundPage';
 import InstallPrompt from './components/InstallPrompt';
+import { App as CapacitorApp } from '@capacitor/app';
+import { BackgroundMode } from '@anuradev/capacitor-background-mode';
+
+// Initialize Capacitor background logic
+try {
+  CapacitorApp.addListener('appStateChange', async ({ isActive }) => {
+    if (!isActive) {
+      console.log('App went to background, enabling background mode...');
+      try {
+        await BackgroundMode.enable();
+      } catch (e) {
+        console.warn('Background mode enable failed:', e);
+      }
+    } else {
+      try {
+        await BackgroundMode.disable();
+      } catch (e) {}
+    }
+  });
+} catch (e) {
+  // Not running in Capacitor
+}
 
 function AuthGuard({ children }) {
   const { user, loading } = useAuth();
