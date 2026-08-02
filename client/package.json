@@ -12,6 +12,7 @@
   "dependencies": {
     "@anuradev/capacitor-background-mode": "^8.0.0",
     "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.0",
     "framer-motion": "^11.3.19",
     "lucide-react": "^0.446.0",
