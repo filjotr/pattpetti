@@ -160,7 +160,16 @@ export function FeedProvider({ children }) {
   }, [socket, syncRoomCode, activeIndex, elapsed, songs]);
 
   // Stop playback when component unmounts (logout)
+  const silentAudioRef = useRef(null);
+
   useEffect(() => {
+    if (silentAudioRef.current) {
+      if (isPlaying) {
+        silentAudioRef.current.play().catch(() => {});
+      } else {
+        silentAudioRef.current.pause();
+      }
+    }
     if (iframeRef.current && iframeRef.current.contentWindow) {
       if (isPlaying) {
         iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
@@ -216,6 +225,9 @@ export function FeedProvider({ children }) {
   useEffect(() => {
     if (!isPlaying || isAudioPlaying) return;
     const forceUnlock = () => {
+      if (silentAudioRef.current) {
+        silentAudioRef.current.play().catch(() => {});
+      }
       if (iframeRef.current && iframeRef.current.contentWindow) {
         iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
         iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }), '*');
@@ -689,6 +701,9 @@ export function FeedProvider({ children }) {
     if (currentVideoId) {
       fetchLikeCount(currentVideoId);
     }
+  }, [currentVideoId, fetchLikeCount]);
+
+  useEffect(() => {
     if (currentVideoId && !isFirstMountRef.current && iframeRef.current && iframeRef.current.contentWindow) {
       // Switch track via YouTube JS API without reloading iframe! Keeps background autoplay active on Chrome.
       iframeRef.current.contentWindow.postMessage(
@@ -700,7 +715,7 @@ export function FeedProvider({ children }) {
         '*'
       );
     }
-  }, [currentVideoId, fetchLikeCount]);
+  }, [currentVideoId]);
 
   const iframeSrc = useMemo(() => {
     if (!currentVideoId) return '';
@@ -724,6 +739,14 @@ export function FeedProvider({ children }) {
       {children}
       {/* Hidden Audio Tag for Partner Voice */}
       <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
+      {/* Silent Audio Tag to force OS Media Session for iframe */}
+      <audio 
+        ref={silentAudioRef} 
+        src="data:audio/mp3;base64,//OExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq" 
+        loop 
+        playsInline 
+        style={{ display: 'none' }} 
+      />
       {/* Global Audio Player for Feed */}
       {currentVideoId && (
         <iframe

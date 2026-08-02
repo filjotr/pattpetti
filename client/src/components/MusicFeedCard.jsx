@@ -177,7 +177,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
           <VinylRecord
             thumbnail={song?.thumbnail}
             isPlaying={isPlaying && isAudioPlaying && isActive}
-            size={window.innerHeight < 700 ? 150 : (window.innerHeight < 800 ? 180 : 240)}
+            size={Math.min(window.innerWidth * 0.55, window.innerHeight < 700 ? 140 : (window.innerHeight < 800 ? 170 : 220))}
           />
           {/* Play/Pause / Buffering overlay icon */}
           <div 
@@ -201,7 +201,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
         </div>
 
         {/* Progress bar and Timer */}
-        <div className="w-[90%] max-w-md mt-4 flex flex-col" 
+        <div className="w-[90%] max-w-md mt-12 mb-4 flex flex-col" 
              onClick={(e) => e.stopPropagation()} 
              onPointerDown={(e) => e.stopPropagation()}
         >
