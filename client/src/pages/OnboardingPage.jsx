@@ -85,7 +85,7 @@ export default function OnboardingPage() {
                 <Music2 size={30} color="#fff" />
               </div>
               <h1 style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.5, color: '#fff' }}>
-                Listen With Friends
+                Pattpetti
               </h1>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
                 Discover music together

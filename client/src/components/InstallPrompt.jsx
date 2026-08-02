@@ -41,7 +41,7 @@ export default function InstallPrompt() {
       }
       setDeferredPrompt(null);
     } else {
-      alert("Please tap the 3-dots menu (⋮) in your browser and select 'Add to Home screen' or 'Install app' to install Listen With Friends!");
+      alert("Please tap the 3-dots menu (⋮) in your browser and select 'Add to Home screen' or 'Install app' to install Pattpetti!");
     }
   };
 

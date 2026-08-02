@@ -73,7 +73,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
               <Music2 size={16} color="#ffffff" />
             </div>
             <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: 0.5, color: 'var(--text)' }}>
-              {syncRoomCode ? 'Synced Live Feed' : 'Listen With Friends'}
+              {syncRoomCode ? 'Synced Live Feed' : 'Pattpetti'}
             </span>
           </div>
 

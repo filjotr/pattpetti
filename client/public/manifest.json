@@ -1,6 +1,6 @@
 {
-  "name": "Listen With Friends",
-  "short_name": "ListenTogether",
+  "name": "Pattpetti",
+  "short_name": "Pattpetti",
   "description": "Listen to music in sync with friends.",
   "start_url": "/",
   "display": "standalone",
