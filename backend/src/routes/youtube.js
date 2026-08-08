@@ -123,16 +123,35 @@ router.get('/audio/:videoId', async (req, res) => {
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     
-    // 🚀 NEW: Use play-dl which easily bypasses YouTube botguard and IP bans!
-    const stream = await play.stream(url, { discordPlayerCompatibility: false });
+    const https = require('https');
+    
+    // Get video info using play-dl to bypass botguard
+    const info = await play.video_info(url);
+    
+    const audioFormats = info.format.filter(f => f.mimeType && f.mimeType.includes('audio'));
+    if (!audioFormats || audioFormats.length === 0) {
+      return res.status(404).json({ message: 'No audio found' });
+    }
 
-    res.setHeader('Content-Type', stream.type || 'audio/mpeg');
-    res.setHeader('Transfer-Encoding', 'chunked');
+    // Prefer mp4/m4a format because Android and iOS just_audio support it perfectly
+    const chosen = audioFormats.find(f => f.mimeType.includes('mp4')) || audioFormats[0];
 
-    stream.stream.pipe(res);
+    https.get(chosen.url, (streamRes) => {
+      // Forward the correct MIME type
+      res.setHeader('Content-Type', chosen.mimeType || 'audio/mp4');
+      
+      // Crucial: Forward Content-Length so the app player knows it's a valid seekable audio file
+      if (streamRes.headers['content-length']) {
+        res.setHeader('Content-Length', streamRes.headers['content-length']);
+      }
+      if (streamRes.headers['accept-ranges']) {
+        res.setHeader('Accept-Ranges', streamRes.headers['accept-ranges']);
+      }
 
-    stream.stream.on('error', (err) => {
-      console.error('play-dl streaming error:', err);
+      // Pipe the actual youtube data to the phone
+      streamRes.pipe(res);
+    }).on('error', (err) => {
+      console.error('HTTPS Proxy error:', err);
       if (!res.headersSent) res.status(500).end();
     });
 
