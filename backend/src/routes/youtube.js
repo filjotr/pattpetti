@@ -1,5 +1,6 @@
 const express = require('express');
 const ytSearch = require('yt-search');
+const ytdl = require('@distube/ytdl-core');
 const router = express.Router();
 
 function parseSong(video, category) {
@@ -111,6 +112,44 @@ router.get('/details/:videoId', async (req, res) => {
   } catch (err) {
     console.error('yt-search details error:', err);
     res.status(500).json({ message: 'Error fetching song details' });
+  }
+});
+
+// GET /api/youtube/audio/:videoId — Get direct audio stream URL
+router.get('/audio/:videoId', async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    if (!videoId) return res.status(400).json({ message: 'Video ID required' });
+
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    
+    if (!ytdl.validateID(videoId)) {
+      return res.status(400).json({ message: 'Invalid video ID' });
+    }
+
+    const info = await ytdl.getInfo(url);
+    
+    // Get audio-only formats, sorted by bitrate (highest quality audio)
+    const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
+    
+    if (!audioFormats || audioFormats.length === 0) {
+      return res.status(404).json({ message: 'No audio stream found' });
+    }
+
+    // Pick medium-quality audio (not too high to be slow, not too low to sound bad)
+    const sorted = audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0));
+    const chosen = sorted[Math.min(1, sorted.length - 1)]; // second best = good balance
+
+    res.json({
+      audioUrl: chosen.url,
+      bitrate: chosen.audioBitrate,
+      mimeType: chosen.mimeType,
+      duration: info.videoDetails.lengthSeconds,
+      title: info.videoDetails.title,
+    });
+  } catch (err) {
+    console.error('ytdl audio error:', err.message);
+    res.status(500).json({ message: 'Failed to get audio URL', error: err.message });
   }
 });
 
