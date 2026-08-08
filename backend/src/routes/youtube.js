@@ -126,9 +126,15 @@ router.get('/audio/:videoId', async (req, res) => {
     const https = require('https');
     
     // Get video info using play-dl to bypass botguard
-    const info = await play.video_info(url);
+    const info = await play.video_info(url).catch(e => null);
     
-    const audioFormats = info.format.filter(f => f.mimeType && f.mimeType.includes('audio'));
+    if (!info) {
+      return res.status(404).json({ message: 'Video info not found or blocked' });
+    }
+
+    const formats = info.format || info.formats || [];
+    const audioFormats = formats.filter(f => f.mimeType && f.mimeType.includes('audio'));
+    
     if (!audioFormats || audioFormats.length === 0) {
       return res.status(404).json({ message: 'No audio found' });
     }
@@ -136,7 +142,7 @@ router.get('/audio/:videoId', async (req, res) => {
     // Prefer mp4/m4a format because Android and iOS just_audio support it perfectly
     const chosen = audioFormats.find(f => f.mimeType.includes('mp4')) || audioFormats[0];
 
-    https.get(chosen.url, (streamRes) => {
+    const proxyRequest = https.get(chosen.url, (streamRes) => {
       // Forward the correct MIME type
       res.setHeader('Content-Type', chosen.mimeType || 'audio/mp4');
       
@@ -150,7 +156,9 @@ router.get('/audio/:videoId', async (req, res) => {
 
       // Pipe the actual youtube data to the phone
       streamRes.pipe(res);
-    }).on('error', (err) => {
+    });
+    
+    proxyRequest.on('error', (err) => {
       console.error('HTTPS Proxy error:', err);
       if (!res.headersSent) res.status(500).end();
     });
