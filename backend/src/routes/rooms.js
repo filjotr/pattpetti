@@ -74,14 +74,75 @@ router.get('/public', authMiddleware, async (req, res) => {
   }
 });
 
-// Delete Room
-router.delete('/:code', async (req, res) => {
+// ─── Flutter-compatible routes ───────────────────────────
+// POST /api/rooms — Create a room (Flutter app calls this)
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    const room = await Room.findOne({ code: req.params.code.toUpperCase() });
+    const { name, description, isPrivate } = req.body;
+    if (!name) return res.status(400).json({ message: 'Room name is required' });
+
+    let code;
+    let isUnique = false;
+    while (!isUnique) {
+      code = Room.generateCode();
+      const existing = await Room.findOne({ code });
+      if (!existing) isUnique = true;
+    }
+
+    const room = new Room({
+      name, code,
+      isPrivate: isPrivate || false,
+      host: req.user._id,
+      members: [{ user: req.user._id, role: 'host' }]
+    });
+
+    await room.save();
+    await User.findByIdAndUpdate(req.user._id, { $inc: { 'stats.roomsCreated': 1 } });
+
+    res.status(201).json({ room });
+  } catch (err) {
+    console.error('Create room error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET /api/rooms — List public rooms
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const rooms = await Room.find({ isPrivate: false })
+      .populate('host', 'username')
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+
+    const roomsWithCount = rooms.map(r => ({
+      ...r,
+      participantCount: r.members ? r.members.length : 0
+    }));
+
+    res.json({ rooms: roomsWithCount });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /api/rooms/join — Join by code
+router.post('/join', authMiddleware, async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ message: 'Code is required' });
+
+    const room = await Room.findOne({ code: code.toUpperCase() });
     if (!room) return res.status(404).json({ message: 'Room not found' });
 
-    await Room.deleteOne({ _id: room._id });
-    res.json({ message: 'Room deleted' });
+    const isMember = room.members.some(m => m.user.toString() === req.user._id.toString());
+    if (!isMember) {
+      room.members.push({ user: req.user._id, role: 'member' });
+      await room.save();
+      await User.findByIdAndUpdate(req.user._id, { $inc: { 'stats.roomsJoined': 1 } });
+    }
+
+    res.json({ room });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

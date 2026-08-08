@@ -23,19 +23,12 @@ import { BackgroundMode } from '@anuradev/capacitor-background-mode';
 
 // Initialize Capacitor background logic
 try {
-  CapacitorApp.addListener('appStateChange', async ({ isActive }) => {
-    if (!isActive) {
-      console.log('App went to background, enabling background mode...');
-      try {
-        await BackgroundMode.enable();
-      } catch (e) {
-        console.warn('Background mode enable failed:', e);
-      }
-    } else {
-      try {
-        await BackgroundMode.disable();
-      } catch (e) {}
-    }
+  // Enable background mode globally on startup
+  BackgroundMode.enable();
+  
+  // Try to prevent WebView from pausing JS execution
+  BackgroundMode.setSettings({
+    webviewOptimizations: false
   });
 } catch (e) {
   // Not running in Capacitor

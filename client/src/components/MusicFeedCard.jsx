@@ -15,6 +15,13 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
   const [showListenModal, setShowListenModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [localProgress, setLocalProgress] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const liveDuration = durations?.[song?.videoId];
   const totalSeconds = liveDuration || parseDuration(song?.duration);
@@ -165,7 +172,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
 
       {/* Center — Vinyl + Waveform */}
       <div 
-        className="relative z-20 flex flex-col items-center gap-6 cursor-pointer" 
+        className={`relative z-20 flex flex-col items-center gap-6 cursor-pointer ${isMobile ? 'mt-8' : ''}`}
         onClick={handleTogglePlay}
       >
         <motion.div
@@ -201,7 +208,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
         </div>
 
         {/* Progress bar and Timer */}
-        <div className="w-[90%] max-w-md mt-12 mb-4 flex flex-col" 
+        <div className={`w-[90%] max-w-md ${isMobile ? 'mt-24' : 'mt-12'} mb-4 flex flex-col`}
              onClick={(e) => e.stopPropagation()} 
              onPointerDown={(e) => e.stopPropagation()}
         >
@@ -244,7 +251,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
       {/* Bottom Actions */}
       <div
         className="absolute left-0 right-0 z-20 px-5 pointer-events-none"
-        style={{ bottom: 'calc(var(--nav-height) + 10px)' }}
+        style={{ bottom: isMobile ? 'calc(var(--nav-height) + 120px)' : 'calc(var(--nav-height) + 10px)' }}
       >
         <div className="flex items-end justify-end pointer-events-auto">
           {/* Right: action buttons */}
