@@ -136,17 +136,21 @@ router.get('/audio/:videoId', async (req, res) => {
       return res.status(404).json({ message: 'No audio stream found' });
     }
 
-    // Pick medium-quality audio (not too high to be slow, not too low to sound bad)
+    // Sort formats to get the best audio (not too large)
     const sorted = audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0));
     const chosen = sorted[Math.min(1, sorted.length - 1)]; // second best = good balance
 
-    res.json({
-      audioUrl: chosen.url,
-      bitrate: chosen.audioBitrate,
-      mimeType: chosen.mimeType,
-      duration: info.videoDetails.lengthSeconds,
-      title: info.videoDetails.title,
-    });
+    // 🚀 NEW: Proxy the stream directly to avoid IP mismatches!
+    res.setHeader('Content-Type', chosen.mimeType || 'audio/mpeg');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    ytdl(url, { format: chosen })
+      .on('error', (err) => {
+        console.error('Streaming error:', err);
+        if (!res.headersSent) res.status(500).end();
+      })
+      .pipe(res);
+
   } catch (err) {
     console.error('ytdl audio error:', err.message);
     res.status(500).json({ message: 'Failed to get audio URL', error: err.message });
