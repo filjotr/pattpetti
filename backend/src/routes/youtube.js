@@ -1,6 +1,6 @@
 const express = require('express');
 const ytSearch = require('yt-search');
-const ytdl = require('@distube/ytdl-core');
+const play = require('play-dl');
 const router = express.Router();
 
 function parseSong(video, category) {
@@ -123,36 +123,21 @@ router.get('/audio/:videoId', async (req, res) => {
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     
-    if (!ytdl.validateID(videoId)) {
-      return res.status(400).json({ message: 'Invalid video ID' });
-    }
+    // 🚀 NEW: Use play-dl which easily bypasses YouTube botguard and IP bans!
+    const stream = await play.stream(url, { discordPlayerCompatibility: false });
 
-    const info = await ytdl.getInfo(url);
-    
-    // Get audio-only formats, sorted by bitrate (highest quality audio)
-    const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
-    
-    if (!audioFormats || audioFormats.length === 0) {
-      return res.status(404).json({ message: 'No audio stream found' });
-    }
-
-    // Sort formats to get the best audio (not too large)
-    const sorted = audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0));
-    const chosen = sorted[Math.min(1, sorted.length - 1)]; // second best = good balance
-
-    // 🚀 NEW: Proxy the stream directly to avoid IP mismatches!
-    res.setHeader('Content-Type', chosen.mimeType || 'audio/mpeg');
+    res.setHeader('Content-Type', stream.type || 'audio/mpeg');
     res.setHeader('Transfer-Encoding', 'chunked');
 
-    ytdl(url, { format: chosen })
-      .on('error', (err) => {
-        console.error('Streaming error:', err);
-        if (!res.headersSent) res.status(500).end();
-      })
-      .pipe(res);
+    stream.stream.pipe(res);
+
+    stream.stream.on('error', (err) => {
+      console.error('play-dl streaming error:', err);
+      if (!res.headersSent) res.status(500).end();
+    });
 
   } catch (err) {
-    console.error('ytdl audio error:', err.message);
+    console.error('play-dl audio error:', err.message);
     res.status(500).json({ message: 'Failed to get audio URL', error: err.message });
   }
 });
