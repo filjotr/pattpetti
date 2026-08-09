@@ -1,6 +1,7 @@
 const express = require('express');
 const ytSearch = require('yt-search');
 const play = require('play-dl');
+const ytdl = require('@distube/ytdl-core');
 const https = require('https');
 
 const router = express.Router();
@@ -243,14 +244,32 @@ router.all('/audio/:videoId', async (req, res) => {
     try {
       info = await play.video_info(youtubeUrl);
     } catch (error) {
-      console.error(
-        '[Audio API] play-dl error:',
-        error.message
-      );
+      console.error('[Audio API] play-dl FAILED');
+      console.error('[Audio API] videoId:', videoId);
+      console.error('[Audio API] error message:', error?.message);
 
-      return res.status(502).json({
-        message: 'Unable to get YouTube video information',
-      });
+      console.log('[Audio API] Attempting fallback to @distube/ytdl-core...');
+      try {
+        const ytdlInfo = await ytdl.getInfo(youtubeUrl);
+        // Map ytdl formats to match play-dl structure so downstream code works seamlessly
+        info = {
+          formats: ytdlInfo.formats.map(f => ({
+            mimeType: f.mimeType,
+            url: f.url,
+            bitrate: f.bitrate,
+            contentLength: f.contentLength,
+            type: f.mimeType?.split(';')[0]
+          }))
+        };
+        console.log('[Audio API] @distube/ytdl-core SUCCESS');
+      } catch (ytdlError) {
+        console.error('[Audio API] Fallback @distube/ytdl-core FAILED:', ytdlError?.message);
+        return res.status(502).json({
+          message: 'Unable to get YouTube video information (both play-dl and ytdl-core failed)',
+          playDlError: error?.message || 'Unknown play-dl error',
+          ytdlError: ytdlError?.message || 'Unknown ytdl error'
+        });
+      }
     }
 
     if (!info) {
@@ -298,15 +317,20 @@ router.all('/audio/:videoId', async (req, res) => {
       ) ||
       audioFormats[0];
 
-    if (!chosen.url) {
+    if (!chosen || !chosen.url) {
       return res.status(404).json({
         message: 'Audio URL unavailable',
       });
     }
 
-    console.log(
-      `[Audio API] Selected format: ${chosen.mimeType}`
-    );
+    console.log('[Audio API] --- SELECTED FORMAT ---');
+    console.log(`[Audio API] videoId: ${videoId}`);
+    console.log(`[Audio API] mimeType: ${chosen.mimeType}`);
+    console.log(`[Audio API] type: ${chosen.type || 'unknown'}`);
+    console.log(`[Audio API] bitrate: ${chosen.bitrate}`);
+    console.log(`[Audio API] contentLength: ${chosen.contentLength || 'unknown'}`);
+    console.log(`[Audio API] url length: ${chosen.url.length}`);
+    console.log('-----------------------------------');
 
     /* ---------------- REQUEST HEADERS ---------------- */
 
