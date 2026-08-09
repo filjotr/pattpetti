@@ -115,22 +115,29 @@ router.get('/details/:videoId', async (req, res) => {
   }
 });
 
-// GET /api/youtube/audio/:videoId — Get direct audio stream URL
-router.get('/audio/:videoId', async (req, res) => {
+// GET & HEAD /api/youtube/audio/:videoId — Get direct audio stream URL with Range support
+router.all('/audio/:videoId', async (req, res) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return res.status(405).json({ message: 'Method Not Allowed' });
+  }
+
   try {
     const { videoId } = req.params;
     if (!videoId) return res.status(400).json({ message: 'Video ID required' });
 
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    console.log(`[Audio API] Request for VIDEO ID: ${videoId}, Method: ${req.method}`);
     
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
     const https = require('https');
     
-    // Get video info using play-dl to bypass botguard
+    // Get video info using play-dl
     const info = await play.video_info(url).catch(e => null);
     
     if (!info) {
+      console.log(`[Audio API] play-dl video_info failure for ${videoId}`);
       return res.status(404).json({ message: 'Video info not found or blocked' });
     }
+    console.log(`[Audio API] play-dl video_info success for ${videoId}`);
 
     const formats = info.format || info.formats || [];
     const audioFormats = formats.filter(f => f.mimeType && f.mimeType.includes('audio'));
@@ -139,32 +146,62 @@ router.get('/audio/:videoId', async (req, res) => {
       return res.status(404).json({ message: 'No audio found' });
     }
 
-    // Prefer mp4/m4a format because Android and iOS just_audio support it perfectly
+    // Prefer mp4/m4a format
     const chosen = audioFormats.find(f => f.mimeType.includes('mp4')) || audioFormats[0];
+    console.log(`[Audio API] Selected format: ${chosen.mimeType}, URL: ${chosen.url.substring(0, 50)}...`);
 
-    const proxyRequest = https.get(chosen.url, (streamRes) => {
-      // Forward the correct MIME type
-      res.setHeader('Content-Type', chosen.mimeType || 'audio/mp4');
+    // Prepare proxy options to forward Range headers
+    const options = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      }
+    };
+
+    if (req.headers.range) {
+      options.headers['Range'] = req.headers.range;
+      console.log(`[Audio API] Range header present: ${req.headers.range}`);
+    }
+
+    const proxyRequest = https.get(chosen.url, options, (streamRes) => {
+      console.log(`[Audio API] Source response status: ${streamRes.statusCode}`);
       
-      // Crucial: Forward Content-Length so the app player knows it's a valid seekable audio file
+      // Forward status code (200 or 206)
+      res.status(streamRes.statusCode);
+
+      // Forward essential headers for audio streaming/seeking
+      res.setHeader('Content-Type', chosen.mimeType || 'audio/mp4');
+      res.setHeader('Accept-Ranges', 'bytes');
+      
       if (streamRes.headers['content-length']) {
         res.setHeader('Content-Length', streamRes.headers['content-length']);
+        console.log(`[Audio API] contentLength: ${streamRes.headers['content-length']}`);
       }
-      if (streamRes.headers['accept-ranges']) {
-        res.setHeader('Accept-Ranges', streamRes.headers['accept-ranges']);
+      
+      if (streamRes.headers['content-range']) {
+        res.setHeader('Content-Range', streamRes.headers['content-range']);
+      }
+      
+      if (streamRes.headers['content-disposition']) {
+        res.setHeader('Content-Disposition', streamRes.headers['content-disposition']);
       }
 
-      // Pipe the actual youtube data to the phone
+      // If it's a HEAD request, just end the response here
+      if (req.method === 'HEAD') {
+        streamRes.destroy();
+        return res.end();
+      }
+
+      // Pipe the audio data
       streamRes.pipe(res);
     });
     
     proxyRequest.on('error', (err) => {
-      console.error('HTTPS Proxy error:', err);
-      if (!res.headersSent) res.status(500).end();
+      console.error(`[Audio API] HTTPS Proxy error: ${err.message}`);
+      if (!res.headersSent) res.status(500).json({ message: 'Proxy stream error' });
     });
 
   } catch (err) {
-    console.error('play-dl audio error:', err.message);
+    console.error(`[Audio API] Actual error: ${err.message}`);
     res.status(500).json({ message: 'Failed to get audio URL', error: err.message });
   }
 });
