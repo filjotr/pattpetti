@@ -755,7 +755,7 @@ export function FeedProvider({ children }) {
           height="200"
           src={iframeSrc}
           allow="autoplay; encrypted-media; picture-in-picture"
-          style={{ position: 'fixed', top: '-1000px', opacity: 0.01, pointerEvents: 'none', zIndex: -100 }}
+          style={{ position: 'fixed', top: 0, left: 0, opacity: 0.01, pointerEvents: 'none', zIndex: -100 }}
           title="global-feed-audio"
         />
       )}

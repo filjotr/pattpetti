@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pattpetti-app.onrender.com/sitemap.xml
