@@ -6,7 +6,7 @@ import SongActions from './SongActions';
 import CommentSheet from './CommentSheet';
 import ListenTogetherModal from './ListenTogetherModal';
 import { formatDuration, getAvatarUrl } from '../utils/config';
-import { Music2, Clock, Play, Pause, Mic, MicOff } from 'lucide-react';
+import { Clock, Play, Pause, Mic, MicOff } from 'lucide-react';
 import { useFeed } from '../context/FeedContext';
 
 export default function MusicFeedCard({ song, isActive, index, onOpenComment }) {

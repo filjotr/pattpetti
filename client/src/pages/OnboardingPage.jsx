@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, Eye, EyeOff, Music2, ArrowRight, Chrome } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Chrome } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { MUSIC_INTERESTS } from '../utils/config';
 
