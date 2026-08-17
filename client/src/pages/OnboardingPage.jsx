@@ -81,9 +81,7 @@ export default function OnboardingPage() {
           >
             {/* Logo */}
             <div className="text-center mb-8">
-              <div style={{ width: 64, height: 64, background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: 'var(--neu-shadow)' }}>
-                <Music2 size={30} color="#fff" />
-              </div>
+              <img src="/logo.png" alt="Pattpetti Logo" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', margin: '0 auto', boxShadow: 'var(--neu-shadow)' }} />
               <h1 style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.5, color: '#fff' }}>
                 Pattpetti
               </h1>

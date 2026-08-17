@@ -73,12 +73,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
       >
         <div className="flex items-center justify-between pointer-events-auto">
           <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', boxShadow: '0 4px 12px var(--primary-glow)' }}
-            >
-              <Music2 size={16} color="#ffffff" />
-            </div>
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-full object-cover" style={{ boxShadow: '0 4px 12px var(--primary-glow)' }} />
             <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: 0.5, color: 'var(--text)' }}>
               {syncRoomCode ? 'Synced Live Feed' : 'Pattpetti'}
             </span>
