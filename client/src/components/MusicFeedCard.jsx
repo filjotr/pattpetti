@@ -139,7 +139,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
               lineHeight: 1.2, marginBottom: 4,
               textShadow: '0 4px 20px rgba(0,0,0,0.8)',
             }}
-            className="line-clamp-2 tracking-tight"
+            className="line-clamp-1 tracking-tight"
           >
             {song?.title || 'Unknown Song'}
           </motion.h2>
@@ -167,7 +167,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
 
       {/* Center — Vinyl + Waveform */}
       <div 
-        className={`relative z-20 flex flex-col items-center gap-6 cursor-pointer ${isMobile ? 'mt-8' : ''}`}
+        className={`relative z-20 flex flex-col items-center gap-6 cursor-pointer ${isMobile ? 'mt-28' : ''}`}
         onClick={handleTogglePlay}
       >
         <motion.div
@@ -201,45 +201,46 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
         <div className="scale-75 sm:scale-100">
           <WaveformAnim isPlaying={isPlaying && isAudioPlaying && isActive} />
         </div>
+      </div>
 
-        {/* Progress bar and Timer */}
-        <div className={`w-[90%] max-w-md ${isMobile ? 'mt-24' : 'mt-12'} mb-4 flex flex-col`}
-             onClick={(e) => e.stopPropagation()} 
-             onPointerDown={(e) => e.stopPropagation()}
-        >
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            step="0.1"
-            value={progress || 0}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
-            onTouchEnd={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
-            onMouseUp={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              setLocalProgress(val);
-              setIsDragging(true);
-            }}
-            onInput={(e) => {
-              const val = parseFloat(e.target.value);
-              setLocalProgress(val);
-              setIsDragging(true);
-            }}
-            style={{ 
-              height: 4, borderRadius: 2, cursor: 'pointer',
-              accentColor: 'var(--primary)',
-              touchAction: 'none'
-            }}
-            className="w-full"
-          />
-          <div className="flex justify-between items-center mt-2 w-full" style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
-            <span>{formatTime(displayElapsed)}</span>
-            <span>{liveDuration ? formatTime(liveDuration) : formatDuration(song?.duration)}</span>
-          </div>
+      {/* Progress bar and Timer */}
+      <div className="absolute left-5 right-5 z-20 flex flex-col pointer-events-auto"
+           style={{ bottom: 'calc(var(--nav-height) + 30px)' }}
+           onClick={(e) => e.stopPropagation()} 
+           onPointerDown={(e) => e.stopPropagation()}
+      >
+        <input 
+          type="range" 
+          min="0" 
+          max="100" 
+          step="0.1"
+          value={progress || 0}
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
+          onTouchEnd={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
+          onMouseUp={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
+          onChange={(e) => {
+            const val = parseFloat(e.target.value);
+            setLocalProgress(val);
+            setIsDragging(true);
+          }}
+          onInput={(e) => {
+            const val = parseFloat(e.target.value);
+            setLocalProgress(val);
+            setIsDragging(true);
+          }}
+          style={{ 
+            height: 4, borderRadius: 2, cursor: 'pointer',
+            accentColor: 'var(--primary)',
+            touchAction: 'none'
+          }}
+          className="w-full"
+        />
+        <div className="flex justify-between items-center mt-2 w-full" style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+          <span>{formatTime(displayElapsed)}</span>
+          <span>{liveDuration ? formatTime(liveDuration) : formatDuration(song?.duration)}</span>
         </div>
       </div>
 
