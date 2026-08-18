@@ -7,20 +7,28 @@
    DESIGN TOKENS
    ============================================ */
 :root {
-  --bg: #09090b; /* Deep slate / black */
-  --bg-card: rgba(24, 24, 27, 0.4);
-  --bg-glass: rgba(24, 24, 27, 0.6);
+  --bg: #1e1e24; /* Neumorphic dark base */
+  --bg-card: #1e1e24;
+  --bg-glass: #1e1e24;
   --primary: #8b5cf6; /* Vibrant Purple */
   --primary-glow: rgba(139, 92, 246, 0.35);
   --secondary: #d946ef; /* Magenta */
   --accent: #fbcfe8;
-  --text: #f8fafc;
-  --text-muted: rgba(248, 250, 252, 0.65);
-  --text-dim: rgba(248, 250, 252, 0.4);
-  --border: rgba(255, 255, 255, 0.08);
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --border: rgba(255, 255, 255, 0.03);
   --border-glow: rgba(139, 92, 246, 0.4);
-  --shadow-glow: 0 0 30px rgba(139, 92, 246, 0.3);
-  --shadow-card: 0 10px 40px -10px rgba(0, 0, 0, 0.6);
+  
+  /* Neumorphic Shadows */
+  --neu-light: rgba(255, 255, 255, 0.05);
+  --neu-dark: rgba(0, 0, 0, 0.6);
+  --neu-flat: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  --neu-flat-hover: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  --neu-pressed: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  --neu-pressed-shallow: inset 2px 2px 4px var(--neu-dark), inset -2px -2px 4px var(--neu-light);
+
+  --shadow-glow: 0 0 20px rgba(139, 92, 246, 0.2);
   --nav-height: 72px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -71,31 +79,27 @@ body {
    GLASS MORPHISM COMPONENTS
    ============================================ */
 .glass {
-  background: var(--bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  background: var(--bg);
   border-radius: 16px;
+  box-shadow: var(--neu-flat);
+  border: 1px solid var(--border);
 }
 
 .glass-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--border);
+  background: var(--bg);
   border-radius: 24px;
-  box-shadow: var(--shadow-card);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--neu-flat);
+  border: 1px solid var(--border);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-card:hover {
-  border-color: var(--border-glow);
-  box-shadow: var(--shadow-card), var(--shadow-glow);
+  box-shadow: var(--neu-flat-hover), var(--shadow-glow);
   transform: translateY(-2px);
 }
 
 .glass-input {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text);
@@ -104,24 +108,24 @@ body {
   font-size: 14px;
   width: 100%;
   outline: none;
-  transition: all 0.2s ease;
+  box-shadow: var(--neu-pressed);
+  transition: all 0.3s ease;
 }
 
 .glass-input::placeholder { color: var(--text-dim); }
 
 .glass-input:focus {
-  border-color: var(--primary);
-  background: rgba(65, 174, 169, 0.08);
-  box-shadow: 0 0 0 3px rgba(65, 174, 169, 0.15);
+  box-shadow: var(--neu-pressed), var(--shadow-glow);
+  border-color: rgba(139, 92, 246, 0.5);
 }
 
 /* ============================================
    BUTTONS
    ============================================ */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  color: #fff;
-  border: none;
+  background: var(--bg);
+  color: var(--primary);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 14px 28px;
   font-family: 'Inter', sans-serif;
@@ -133,22 +137,23 @@ body {
   justify-content: center;
   gap: 8px;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 8px 24px var(--primary-glow);
+  box-shadow: var(--neu-flat);
   user-select: none;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(139, 92, 246, 0.5);
+  color: var(--secondary);
+  box-shadow: var(--neu-flat-hover), var(--shadow-glow);
+  transform: translateY(-1px);
 }
 
 .btn-primary:active {
-  transform: scale(0.96);
-  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+  transform: translateY(1px);
+  box-shadow: var(--neu-pressed);
 }
 
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -163,18 +168,20 @@ body {
   gap: 8px;
   transition: all 0.2s ease;
   user-select: none;
+  box-shadow: var(--neu-flat);
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: var(--primary);
   color: var(--primary);
+  box-shadow: var(--neu-flat-hover);
 }
 
-.btn-ghost:active { transform: scale(0.97); }
+.btn-ghost:active {
+  box-shadow: var(--neu-pressed);
+}
 
 .btn-icon {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 50%;
   width: 44px;
@@ -183,18 +190,20 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   color: var(--text-muted);
   flex-shrink: 0;
+  box-shadow: var(--neu-flat);
 }
 
 .btn-icon:hover {
-  background: rgba(65, 174, 169, 0.15);
-  border-color: var(--primary);
   color: var(--primary);
+  box-shadow: var(--neu-flat-hover);
 }
 
-.btn-icon:active { transform: scale(0.9); }
+.btn-icon:active {
+  box-shadow: var(--neu-pressed);
+}
 
 /* ============================================
    VINYL RECORD
@@ -314,10 +323,9 @@ body {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   height: calc(var(--nav-height) + var(--safe-bottom));
-  background: rgba(9, 9, 11, 0.85);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: var(--bg);
   border-top: 1px solid var(--border);
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -337,11 +345,13 @@ body {
   padding: 10px 20px;
   border-radius: 16px;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: transparent;
 }
 
 .nav-item.active {
   color: var(--primary);
-  background: rgba(139, 92, 246, 0.08);
+  box-shadow: var(--neu-pressed-shallow);
+  background: var(--bg);
 }
 
 .nav-item.active svg {
@@ -350,20 +360,20 @@ body {
 
 .nav-item:hover:not(.active) {
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--neu-flat);
 }
 
 .nav-item.active::before {
   content: '';
   position: absolute;
-  top: -1px;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 32px;
+  width: 16px;
   height: 4px;
-  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  background: var(--primary);
   border-radius: 0 0 8px 8px;
-  box-shadow: 0 4px 10px var(--primary-glow);
+  box-shadow: var(--shadow-glow);
 }
 
 .nav-label {
@@ -397,7 +407,7 @@ body {
    GENRE PILLS
    ============================================ */
 .genre-pill {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text-muted);
   padding: 8px 16px;
@@ -405,19 +415,18 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
   white-space: nowrap;
+  box-shadow: var(--neu-flat);
 }
 
 .genre-pill:hover {
-  background: rgba(255, 255, 255, 0.1);
+  box-shadow: var(--neu-flat-hover);
 }
 
 .genre-pill.selected {
-  background: var(--primary);
-  color: #fff;
-  border-color: var(--primary);
-  box-shadow: 0 0 15px rgba(65, 174, 169, 0.4);
+  color: var(--primary);
+  box-shadow: var(--neu-pressed);
 }
 
 /* ============================================
@@ -438,11 +447,10 @@ body {
   left: 0;
   right: 0;
   height: 70dvh;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: var(--bg);
   border-radius: 24px 24px 0 0;
   border-top: 1px solid var(--border);
+  box-shadow: 0 -8px 30px rgba(0,0,0,0.6);
   display: flex;
   flex-direction: column;
   transform: translateY(100%);
@@ -461,25 +469,35 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  color: #fff;
-  background: transparent;
-  border: none;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+  transition: all 0.3s;
+  box-shadow: var(--neu-flat);
 }
 
 .action-btn:hover {
-  transform: scale(1.1);
+  transform: translateY(-2px);
+  box-shadow: var(--neu-flat-hover);
 }
 
 .action-btn-count {
   font-size: 12px;
   font-weight: 700;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  position: absolute;
+  bottom: -20px;
+  text-shadow: none;
 }
 
-.action-btn:active { transform: scale(0.9); }
+.action-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--neu-pressed);
+}
 
 .action-btn.liked { color: #f43f5e; }
 
@@ -513,13 +531,13 @@ body {
 }
 
 .modal-box {
-  background: rgba(20, 25, 40, 0.95);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 24px;
   width: 100%;
   max-width: 400px;
   padding: 24px;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--neu-flat-hover);
   animation: pop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -546,53 +564,25 @@ body {
 /* ============================================
    AMBIENT BACKGROUND GLOWS
    ============================================ */
-.ambient-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.glow-1 {
-  position: absolute;
-  top: -20%;
-  right: -10%;
-  width: 60vw;
-  height: 60vw;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 60%);
-  border-radius: 50%;
-  animation: float 8s ease-in-out infinite;
-}
-
-.glow-2 {
-  position: absolute;
-  bottom: 10%;
-  left: -15%;
-  width: 50vw;
-  height: 50vw;
-  background: radial-gradient(circle, rgba(217, 70, 239, 0.12) 0%, transparent 60%);
-  border-radius: 50%;
-  animation: float 10s ease-in-out infinite reverse;
-}
+/* Ambient Glows removed for Neumorphic solid finish */
 
 /* ============================================
    SEARCH INPUT
    ============================================ */
 .search-bar {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 100px;
   padding: 12px 18px;
   display: flex;
   align-items: center;
   gap: 10px;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  box-shadow: var(--neu-pressed);
 }
 
 .search-bar:focus-within {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--primary);
+  box-shadow: var(--neu-pressed), var(--shadow-glow);
 }
 
 .search-bar input {
@@ -648,16 +638,16 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid transparent;
+  background: var(--bg);
+  border: 1px solid var(--border);
   padding: 8px;
   border-radius: 12px;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  box-shadow: var(--neu-flat);
 }
 
 .song-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--border);
+  box-shadow: var(--neu-flat-hover);
   transform: translateX(4px);
 }
 
@@ -762,15 +752,15 @@ body {
   cursor: pointer;
   border: 1px solid var(--border);
   color: var(--text-muted);
-  background: transparent;
-  transition: all 0.2s ease;
+  background: var(--bg);
+  transition: all 0.3s ease;
   flex-shrink: 0;
+  box-shadow: var(--neu-flat);
 }
 
 .tab-pill.active {
-  background: rgba(65, 174, 169, 0.2);
-  border-color: var(--primary);
   color: var(--primary);
+  box-shadow: var(--neu-pressed);
 }
 
 /* ============================================
