@@ -77,7 +77,15 @@ router.get('/search', async (req, res) => {
       return res.json({ songs: [] });
     }
 
-    const results = await ytSearch(`${q} song audio`);
+    let searchQuery = q;
+    const lowerQ = q.toLowerCase();
+    
+    // Only append keywords if the user hasn't already specified what they want
+    if (!lowerQ.includes('song') && !lowerQ.includes('audio') && !lowerQ.includes('bgm') && !lowerQ.includes('music') && !lowerQ.includes('lyrics') && !lowerQ.includes('cover')) {
+      searchQuery = `${q} song audio`; // Append this to enforce music results instead of movie scenes
+    }
+
+    const results = await ytSearch(searchQuery);
 
     let videos = results.videos || [];
 

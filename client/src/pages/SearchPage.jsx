@@ -44,10 +44,9 @@ export default function SearchPage() {
     setLoading(false);
   }, [token]);
 
-  const handleInput = (val) => {
-    setQuery(val);
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(val), 400);
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    doSearch(query);
   };
 
   return (
@@ -55,21 +54,23 @@ export default function SearchPage() {
       <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>Search</h1>
 
       {/* Search bar */}
-      <div className="search-bar mb-5">
-        <Search size={18} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+      <form onSubmit={handleSearchSubmit} className="search-bar mb-5">
+        <button type="submit" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          <Search size={18} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+        </button>
         <input
           id="search-input"
           value={query}
-          onChange={e => handleInput(e.target.value)}
+          onChange={e => setQuery(e.target.value)}
           placeholder="Songs, artists, users..."
           autoCapitalize="none"
         />
         {query && (
-          <button onClick={() => handleInput('')} style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          <button type="button" onClick={() => { setQuery(''); setSongs([]); setUsers([]); }} style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <X size={16} />
           </button>
         )}
-      </div>
+      </form>
 
       {!query && (
         <>
@@ -83,7 +84,10 @@ export default function SearchPage() {
               {TRENDING.map(tag => (
                 <button
                   key={tag}
-                  onClick={() => handleInput(tag.replace('#', ''))}
+                  onClick={() => {
+                    setQuery(tag.replace('#', ''));
+                    doSearch(tag.replace('#', ''));
+                  }}
                   style={{
                     padding: '7px 14px', borderRadius: 100, fontSize: 13, fontWeight: 600,
                     background: 'rgba(65,174,169,0.1)', border: '1px solid rgba(65,174,169,0.2)',
