@@ -1,7 +1,6 @@
 const express = require('express');
 const ytSearch = require('yt-search');
-const play = require('play-dl');
-const ytdl = require('@distube/ytdl-core');
+const youtubedl = require('youtube-dl-exec');
 const https = require('https');
 
 const router = express.Router();
@@ -250,34 +249,21 @@ router.all('/audio/:videoId', async (req, res) => {
     let info;
 
     try {
-      info = await play.video_info(youtubeUrl);
+      const subprocess = youtubedl.exec(youtubeUrl, {
+        dumpJson: true,
+        noWarnings: true,
+        preferFreeFormats: true,
+        skipDownload: true
+      });
+      const { stdout } = await subprocess;
+      info = JSON.parse(stdout);
+      console.log('[Audio API] youtube-dl-exec SUCCESS');
     } catch (error) {
-      console.error('[Audio API] play-dl FAILED');
-      console.error('[Audio API] videoId:', videoId);
-      console.error('[Audio API] error message:', error?.message);
-
-      console.log('[Audio API] Attempting fallback to @distube/ytdl-core...');
-      try {
-        const ytdlInfo = await ytdl.getInfo(youtubeUrl);
-        // Map ytdl formats to match play-dl structure so downstream code works seamlessly
-        info = {
-          formats: ytdlInfo.formats.map(f => ({
-            mimeType: f.mimeType,
-            url: f.url,
-            bitrate: f.bitrate,
-            contentLength: f.contentLength,
-            type: f.mimeType?.split(';')[0]
-          }))
-        };
-        console.log('[Audio API] @distube/ytdl-core SUCCESS');
-      } catch (ytdlError) {
-        console.error('[Audio API] Fallback @distube/ytdl-core FAILED:', ytdlError?.message);
-        return res.status(502).json({
-          message: 'Unable to get YouTube video information (both play-dl and ytdl-core failed)',
-          playDlError: error?.message || 'Unknown play-dl error',
-          ytdlError: ytdlError?.message || 'Unknown ytdl error'
-        });
-      }
+      console.error('[Audio API] youtube-dl-exec FAILED:', error?.message);
+      return res.status(502).json({
+        message: 'Unable to get YouTube video information (youtube-dl-exec failed)',
+        error: error?.message || 'Unknown error'
+      });
     }
 
     if (!info) {
@@ -286,16 +272,12 @@ router.all('/audio/:videoId', async (req, res) => {
       });
     }
 
-    const formats =
-      info.format ||
-      info.formats ||
-      [];
+    const formats = info.formats || [];
 
-    /* Find audio-only formats */
+    /* Find audio-only formats or formats with audio */
     const audioFormats = formats.filter((format) => {
-      const mime = format.mimeType || '';
-
-      return mime.startsWith('audio/');
+      // yt-dlp has acodec !== 'none' for audio
+      return format.acodec !== 'none' && format.vcodec === 'none';
     });
 
     if (audioFormats.length === 0) {
@@ -308,22 +290,11 @@ router.all('/audio/:videoId', async (req, res) => {
       });
     }
 
-    /*
-      Prefer MP4/M4A audio because Android audio players
-      generally handle AAC/M4A very well.
-    */
+    /* Prefer m4a or webm */
     const chosen =
-      audioFormats.find((format) =>
-        (format.mimeType || '')
-          .toLowerCase()
-          .includes('mp4')
-      ) ||
-      audioFormats.find((format) =>
-        (format.mimeType || '')
-          .toLowerCase()
-          .includes('webm')
-      ) ||
-      audioFormats[0];
+      audioFormats.find((format) => (format.ext || '').includes('m4a')) ||
+      audioFormats.find((format) => (format.ext || '').includes('webm')) ||
+      audioFormats[audioFormats.length - 1];
 
     if (!chosen || !chosen.url) {
       return res.status(404).json({
@@ -333,22 +304,16 @@ router.all('/audio/:videoId', async (req, res) => {
 
     console.log('[Audio API] --- SELECTED FORMAT ---');
     console.log(`[Audio API] videoId: ${videoId}`);
-    console.log(`[Audio API] mimeType: ${chosen.mimeType}`);
-    console.log(`[Audio API] type: ${chosen.type || 'unknown'}`);
-    console.log(`[Audio API] bitrate: ${chosen.bitrate}`);
-    console.log(`[Audio API] contentLength: ${chosen.contentLength || 'unknown'}`);
-    console.log(`[Audio API] url length: ${chosen.url.length}`);
+    console.log(`[Audio API] ext: ${chosen.ext}`);
+    console.log(`[Audio API] acodec: ${chosen.acodec}`);
+    console.log(`[Audio API] abr: ${chosen.abr}`);
+    console.log(`[Audio API] filesize: ${chosen.filesize || 'unknown'}`);
     console.log('-----------------------------------');
 
     /* ---------------- REQUEST HEADERS ---------------- */
 
-    const headers = {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
-        'AppleWebKit/537.36 (KHTML, like Gecko) ' +
-        'Chrome/131.0.0.0 Safari/537.36',
-      Accept: '*/*',
-    };
+    const headers = { ...info.http_headers };
+    headers.Accept = '*/*';
 
     /* Forward Range request */
     if (req.headers.range) {
