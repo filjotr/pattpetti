@@ -204,7 +204,7 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
       </div>
 
       {/* Progress bar and Timer */}
-      <div className="absolute left-5 right-5 z-20 flex flex-col pointer-events-auto"
+      <div className="absolute left-0 right-0 mx-auto w-[80%] max-w-[320px] z-20 flex flex-col pointer-events-auto"
            style={{ bottom: 'calc(var(--nav-height) + 30px)' }}
            onClick={(e) => e.stopPropagation()} 
            onPointerDown={(e) => e.stopPropagation()}
@@ -232,13 +232,13 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
             setIsDragging(true);
           }}
           style={{ 
-            height: 4, borderRadius: 2, cursor: 'pointer',
+            height: 3, borderRadius: 2, cursor: 'pointer',
             accentColor: 'var(--primary)',
             touchAction: 'none'
           }}
           className="w-full"
         />
-        <div className="flex justify-between items-center mt-2 w-full" style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+        <div className="flex justify-between items-center mt-2 w-full" style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>
           <span>{formatTime(displayElapsed)}</span>
           <span>{liveDuration ? formatTime(liveDuration) : formatDuration(song?.duration)}</span>
         </div>
