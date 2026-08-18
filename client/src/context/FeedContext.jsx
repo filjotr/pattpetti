@@ -149,14 +149,21 @@ export function FeedProvider({ children }) {
   }, [socket, syncRoomCode]);
 
   const togglePlay = useCallback((isRemote = false) => {
-    setIsPlaying(prev => {
-      const next = !prev;
-      if (!isRemote && socket && syncRoomCode) {
-        socket.emit('sync-feed-state', { activeIndex, isPlaying: next, elapsed, timestamp: Date.now(), song: songs[activeIndex] });
+    const nextState = !isPlaying;
+    setIsPlaying(nextState);
+    
+    if (!isRemote && socket && syncRoomCode) {
+      socket.emit('sync-feed-state', { activeIndex, isPlaying: nextState, elapsed, timestamp: Date.now(), song: songs[activeIndex] });
+    }
+
+    if (audioRef.current) {
+      if (nextState) {
+        audioRef.current.play().catch((err) => console.error('[Audio] Sync Play Error:', err));
+      } else {
+        audioRef.current.pause();
       }
-      return next;
-    });
-  }, [socket, syncRoomCode, activeIndex, elapsed, songs]);
+    }
+  }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, songs]);
 
   // Stop playback when component unmounts (logout)
   useEffect(() => {
@@ -617,6 +624,12 @@ export function FeedProvider({ children }) {
           }}
           onPlay={() => setIsAudioPlaying(true)}
           onPause={() => setIsAudioPlaying(false)}
+          onError={(e) => {
+            console.error('[Audio] Playback Error!', e.nativeEvent);
+            // If the stream fails, we can optionally skip or stop
+            setIsAudioPlaying(false);
+            setIsPlaying(false);
+          }}
           onEnded={handleAudioEnded}
           onLoadedMetadata={(e) => {
             const dur = e.target.duration;
