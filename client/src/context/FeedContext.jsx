@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import YouTube from 'react-youtube';
 
 import { API_BASE_URL } from '../utils/config';
 import { useAuth } from './AuthContext';
@@ -41,7 +42,6 @@ function getCachedFeedState() {
     sessionStorage.setItem('pattpetti_last_load', String(now));
     sessionStorage.setItem('pattpetti_refresh_count', String(count));
 
-    // If refreshed 2 or more times quickly (or if cache is older than 30 mins), clear cache!
     if (count >= 2) {
       console.log('Double refresh detected! Clearing song cache to load new songs...');
       localStorage.removeItem('pattpetti_cached_state');
@@ -93,7 +93,7 @@ export function FeedProvider({ children }) {
   const [baseElapsed, setBaseElapsed] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
   const [durations, setDurations] = useState({});
-  const audioRef = useRef(null);
+  const ytPlayerRef = useRef(null);
   const isFirstMountRef = useRef(true);
   const lastSeekTimeRef = useRef(0);
   const currentVideoIdRef = useRef(null);
@@ -108,12 +108,8 @@ export function FeedProvider({ children }) {
     lastSeekTimeRef.current = 0;
   }
 
-  const audioSrc = useMemo(() => {
-    if (!currentVideoId) return '';
-    return `${API_BASE_URL}/youtube/audio/${currentVideoId}`;
-  }, [currentVideoId]);
+  const audioSrc = '';
 
-  // WebRTC Voice Chat State
   const [voiceJoined, setVoiceJoined] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [remoteAudioStream, setRemoteAudioStream] = useState(null);
@@ -164,25 +160,24 @@ export function FeedProvider({ children }) {
       socket.emit('sync-feed-state', { activeIndex, isPlaying: nextState, elapsed, timestamp: Date.now(), song: songs[activeIndex] });
     }
 
-    if (audioRef.current) {
+    if (ytPlayerRef.current) {
       if (nextState) {
-        audioRef.current.play().catch((err) => console.error('[Audio] Sync Play Error:', err));
+        ytPlayerRef.current.playVideo();
         silentAudioRef.current?.play().catch(()=>{});
       } else {
-        audioRef.current.pause();
+        ytPlayerRef.current.pauseVideo();
         silentAudioRef.current?.pause();
       }
     }
   }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, songs]);
 
-  // Stop playback when component unmounts (logout)
   useEffect(() => {
-    if (audioRef.current) {
+    if (ytPlayerRef.current) {
       if (isPlaying) {
-        audioRef.current.play().catch(() => {});
+        ytPlayerRef.current.playVideo();
         silentAudioRef.current?.play().catch(()=>{});
       } else {
-        audioRef.current.pause();
+        ytPlayerRef.current.pauseVideo();
         silentAudioRef.current?.pause();
       }
     }
@@ -228,12 +223,11 @@ export function FeedProvider({ children }) {
     }
   }, [songs, activeIndex, Math.floor(elapsed)]);
 
-  // Global auto-unlock to guarantee audio plays on any screen touch if browser blocked autoplay
   useEffect(() => {
     if (!isPlaying || isAudioPlaying) return;
     const forceUnlock = () => {
-      if (audioRef.current) {
-        audioRef.current.play().catch(() => {});
+      if (ytPlayerRef.current && typeof ytPlayerRef.current.playVideo === 'function') {
+        ytPlayerRef.current.playVideo();
       }
     };
     window.addEventListener('pointerdown', forceUnlock, { passive: true });
@@ -245,18 +239,6 @@ export function FeedProvider({ children }) {
       window.removeEventListener('click', forceUnlock);
     };
   }, [isPlaying, activeIndex, isAudioPlaying]);
-
-  const handleAudioEnded = () => {
-    setActiveIndex(prev => {
-      const nextIdx = prev + 1;
-      if (songsRef.current && nextIdx >= songsRef.current.length) {
-        return 0; // Wrap to start if we reached the end of the playlist!
-      }
-      return nextIdx;
-    });
-  };
-
-  // Auto-play next song logic is handled by native audio onEnded
 
   useEffect(() => {
     if (!token && !user) {
@@ -323,7 +305,6 @@ export function FeedProvider({ children }) {
     const vid = song.videoId;
     const isLiked = likedSongs.has(vid);
 
-    // Optimistic update
     setLikedSongs(prev => {
       const s = new Set(prev);
       if (isLiked) s.delete(vid); else s.add(vid);
@@ -345,7 +326,6 @@ export function FeedProvider({ children }) {
         body: JSON.stringify({ title: song.title, thumbnail: song.thumbnail, channel: song.channel }),
       });
     } catch (err) {
-      // Revert on error
       setLikedSongs(prev => {
         const s = new Set(prev);
         if (isLiked) s.add(vid); else s.delete(vid);
@@ -366,9 +346,9 @@ export function FeedProvider({ children }) {
   }, [likeCounts]);
 
   const seekTo = useCallback((seconds, isRemote = false) => {
-    if (audioRef.current && !isNaN(seconds)) {
+    if (ytPlayerRef.current && !isNaN(seconds)) {
       lastSeekTimeRef.current = Date.now();
-      audioRef.current.currentTime = seconds;
+      ytPlayerRef.current.seekTo(seconds, true);
       setBaseElapsed(seconds);
       setStartTime(Date.now());
       setElapsed(seconds);
@@ -434,7 +414,6 @@ export function FeedProvider({ children }) {
     };
   }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, songs, seekTo, changeTrack]);
 
-  // WebRTC Voice Chat Methods
   const leaveVoice = useCallback(() => {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(t => t.stop());
@@ -566,11 +545,11 @@ export function FeedProvider({ children }) {
         });
         navigator.mediaSession.setActionHandler('play', () => {
           setIsPlaying(true);
-          if (audioRef.current) audioRef.current.play().catch(()=>{});
+          if (ytPlayerRef.current) ytPlayerRef.current.playVideo();
         });
         navigator.mediaSession.setActionHandler('pause', () => {
           setIsPlaying(false);
-          if (audioRef.current) audioRef.current.pause();
+          if (ytPlayerRef.current) ytPlayerRef.current.pauseVideo();
         });
         navigator.mediaSession.setActionHandler('nexttrack', () => {
           setActiveIndex(prev => prev + 1);
@@ -602,57 +581,63 @@ export function FeedProvider({ children }) {
       voiceJoined, isMuted, joinVoice, leaveVoice, toggleMute
     }}>
       {children}
-      {/* Hidden Audio Tag for Partner Voice */}
       <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
-      {/* Silent Background Audio for PWA Keep-Alive and MediaSession (Notification Controls) */}
       <audio ref={silentAudioRef} loop src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" style={{ display: 'none' }} playsInline />
-      {/* Global Audio Player for Feed via Backend Proxy */}
       {currentVideoId && (
-        <audio
-          ref={audioRef}
-          src={audioSrc}
-          autoPlay={isPlaying}
-          playsInline
-          style={{ display: 'none' }}
-          onTimeUpdate={(e) => {
-            if (Date.now() - lastSeekTimeRef.current > 1500) {
-              const ct = e.target.currentTime;
-              setElapsed(ct);
-              setBaseElapsed(ct);
-              setStartTime(Date.now());
+        <YouTube
+          videoId={currentVideoId}
+          opts={{
+            width: '200',
+            height: '200',
+            playerVars: {
+              autoplay: isPlaying ? 1 : 0,
+              controls: 0,
+              disablekb: 1,
+              playsinline: 1,
+              fs: 0,
+              iv_load_policy: 3,
+              rel: 0,
+              modestbranding: 1,
+              origin: typeof window !== 'undefined' ? window.location.origin : '*'
             }
           }}
-          onPlay={() => setIsAudioPlaying(true)}
-          onPause={() => setIsAudioPlaying(false)}
-          onEnded={() => {
-            if (activeIndex < songs.length - 1) {
-              changeTrack(activeIndex + 1, false);
-            } else if (nextPageToken && !loading) {
-              loadFeed(false).then(() => changeTrack(activeIndex + 1, false));
+          onReady={(e) => {
+            ytPlayerRef.current = e.target;
+            const dur = e.target.getDuration();
+            if (dur) {
+              setDurations(prev => ({ ...prev, [currentVideoId]: dur }));
+            }
+            if (isFirstMountRef.current && (baseElapsed > 0 || elapsed > 0)) {
+              e.target.seekTo(baseElapsed || elapsed, true);
+            }
+          }}
+          onStateChange={(e) => {
+            const state = e.data;
+            if (state === 1) {
+              setIsAudioPlaying(true);
+              if (Date.now() - lastSeekTimeRef.current > 1500) {
+                const ct = e.target.getCurrentTime();
+                setElapsed(ct);
+                setBaseElapsed(ct);
+                setStartTime(Date.now());
+              }
+            } else if (state === 2 || state === 3) {
+              setIsAudioPlaying(false);
+            } else if (state === 0) {
+              if (activeIndex < songs.length - 1) {
+                changeTrack(activeIndex + 1, false);
+              } else if (nextPageToken && !loading) {
+                loadFeed(false).then(() => changeTrack(activeIndex + 1, false));
+              }
             }
           }}
           onError={(e) => {
-            console.error('[Audio Element Error]', e.target.error);
+            console.error('[YouTube API Error]', e);
             setIsAudioPlaying(false);
             setIsPlaying(false);
-            setTimeout(() => {
-              if (songs.length > 1) {
-                changeTrack((activeIndex + 1) % songs.length, false);
-              }
-            }, 2000);
           }}
-          onLoadedMetadata={(e) => {
-            const dur = e.target.duration;
-            if (dur && currentVideoId) {
-              setDurations(prev => {
-                if (prev[currentVideoId] === dur) return prev;
-                return { ...prev, [currentVideoId]: dur };
-              });
-            }
-            if (isFirstMountRef.current && (baseElapsed > 0 || elapsed > 0)) {
-              e.target.currentTime = baseElapsed || elapsed;
-            }
-          }}
+          className="hidden-youtube-player"
+          style={{ position: 'fixed', zIndex: -100, top: '0px', left: '0px', opacity: 0.01 }}
         />
       )}
     </FeedContext.Provider>

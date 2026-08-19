@@ -115,18 +115,18 @@ router.get('/trending', async (req, res) => {
     const prevYear = year - 1;
 
     const queries = [
-      `${g} hit songs ${year}`,
-      `${g} latest songs ${year}`,
-      `top ${g} songs`,
-      `${g} hit songs ${prevYear}`,
-      `${g} movie hit songs`,
-      `latest ${g} party hit songs`,
-      `${g} romantic hit songs`,
-      `best ${g} songs official video`,
-      `${g} chartbusters music video`,
-      `${g} melody hit songs`,
-      `new ${g} hit tracks`,
-      `${g} super hit songs`,
+      `${g} hit songs ${year} lyric video`,
+      `${g} latest songs ${year} audio`,
+      `top ${g} songs lyric`,
+      `${g} hit songs ${prevYear} lyric video`,
+      `${g} movie hit songs audio`,
+      `latest ${g} party hit songs lyric`,
+      `${g} romantic hit songs lyric video`,
+      `best ${g} songs official lyric video`,
+      `${g} chartbusters audio`,
+      `${g} melody hit songs lyric`,
+      `new ${g} hit tracks audio`,
+      `${g} super hit songs lyric video`,
     ];
 
     const randomQuery =

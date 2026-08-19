@@ -72,6 +72,11 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
 
   const commitSeek = (valProgress) => {
     setIsDragging(false);
+    
+    // Unlock scroll
+    const container = document.querySelector('.feed-container');
+    if (container) container.style.overflowY = 'scroll';
+
     if (Date.now() - lastSeekCommitRef.current < 250) return;
     lastSeekCommitRef.current = Date.now();
     if (totalSeconds > 0) {
@@ -82,6 +87,17 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
 
   const handleSeekEnd = () => {
     commitSeek(localProgress);
+  };
+
+  const lockScroll = (e) => {
+    e.stopPropagation();
+    const container = document.querySelector('.feed-container');
+    if (container) container.style.overflowY = 'hidden';
+  };
+
+  const unlockScroll = () => {
+    const container = document.querySelector('.feed-container');
+    if (container) container.style.overflowY = 'scroll';
   };
 
   return (
@@ -204,6 +220,12 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
         ref={playerAreaRef}
         className={`relative z-20 flex flex-col items-center gap-6 cursor-pointer ${isMobile ? 'mt-28' : ''}`}
         onClick={handleTogglePlay}
+        onPointerDown={lockScroll}
+        onPointerUp={unlockScroll}
+        onPointerCancel={unlockScroll}
+        onTouchStart={lockScroll}
+        onTouchEnd={unlockScroll}
+        onTouchCancel={unlockScroll}
         style={{ touchAction: 'none' }}
       >
         <motion.div
@@ -245,7 +267,12 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
            className="absolute left-0 right-0 mx-auto w-[80%] max-w-[320px] z-20 flex flex-col pointer-events-auto"
            style={{ bottom: 'calc(var(--nav-height) + 30px)', touchAction: 'none' }}
            onClick={(e) => e.stopPropagation()} 
-           onPointerDown={(e) => e.stopPropagation()}
+           onPointerDown={lockScroll}
+           onPointerUp={unlockScroll}
+           onPointerCancel={unlockScroll}
+           onTouchStart={lockScroll}
+           onTouchEnd={unlockScroll}
+           onTouchCancel={unlockScroll}
       >
         <input 
           type="range" 
@@ -253,9 +280,9 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
           max="100" 
           step="0.1"
           value={progress || 0}
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={lockScroll}
+          onTouchStart={lockScroll}
+          onMouseDown={lockScroll}
           onPointerUp={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
           onTouchEnd={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
           onMouseUp={(e) => commitSeek(parseFloat(e.target.value || localProgress))}
