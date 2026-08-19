@@ -123,6 +123,7 @@ export function FeedProvider({ children }) {
   const pendingCandidatesRef = useRef([]);
   const voiceJoinedRef = useRef(false);
   const remoteAudioRef = useRef(null);
+  const silentAudioRef = useRef(null);
 
   useEffect(() => { voiceJoinedRef.current = voiceJoined; }, [voiceJoined]);
 
@@ -166,8 +167,10 @@ export function FeedProvider({ children }) {
     if (audioRef.current) {
       if (nextState) {
         audioRef.current.play().catch((err) => console.error('[Audio] Sync Play Error:', err));
+        silentAudioRef.current?.play().catch(()=>{});
       } else {
         audioRef.current.pause();
+        silentAudioRef.current?.pause();
       }
     }
   }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, songs]);
@@ -177,8 +180,10 @@ export function FeedProvider({ children }) {
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.play().catch(() => {});
+        silentAudioRef.current?.play().catch(()=>{});
       } else {
         audioRef.current.pause();
+        silentAudioRef.current?.pause();
       }
     }
   }, [isPlaying]);
@@ -662,6 +667,8 @@ export function FeedProvider({ children }) {
       {children}
       {/* Hidden Audio Tag for Partner Voice */}
       <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
+      {/* Silent Background Audio for PWA Keep-Alive and MediaSession (Notification Controls) */}
+      <audio ref={silentAudioRef} loop src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" style={{ display: 'none' }} playsInline />
       {/* Global Audio Player for Feed via YouTube Iframe */}
       {currentVideoId && (
         <YouTube
