@@ -6,6 +6,7 @@ import { fetchTrendingByGenre } from '../utils/youtube';
 import { useSocket } from './SocketContext';
 
 const FeedContext = createContext();
+export const useFeed = () => useContext(FeedContext);
 
 async function fetchAudioUrl(videoId) {
   const instances = ['https://vid.puffyan.us', 'https://invidious.jing.rocks', 'https://invidious.nerdvpn.de'];
@@ -19,7 +20,6 @@ async function fetchAudioUrl(videoId) {
   }
   return null;
 }
-export const useFeed = () => useContext(FeedContext);
 
 const ICE_CONFIG = {
   iceServers: [
@@ -81,6 +81,118 @@ export function FeedProvider({ children }) {
   const cachedState = getCachedFeedState();
   const [songs, setSongs] = useState(cachedState ? cachedState.songs : []);
   const songsRef = useRef(songs);
+  useEffect(() => {
+    songsRef.current = songs;
+  }, [songs]);
+  const [loading, setLoading] = useState(false);
+  const [nextPageToken, setNextPageToken] = useState(null);
+  const [likedSongs, setLikedSongs] = useState(new Set());
+  const [likeCounts, setLikeCounts] = useState({});
+  const [commentCounts, setCommentCounts] = useState({});
+
+  const { socket } = useSocket() || {};
+  const [syncRoomCode, setSyncRoomCode] = useState(null);
+  const [syncMembers, setSyncMembers] = useState([]);
+
+  const [activeIndex, setActiveIndex] = useState(cachedState ? (cachedState.activeIndex || 0) : 0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [elapsed, setElapsed] = useState(cachedState ? (cachedState.elapsed || 0) : 0);
+  const [baseElapsed, setBaseElapsed] = useState(0);
+  const [startTime, setStartTime] = useState(Date.now());
+  const [durations, setDurations] = useState({});
+  const audioRef = useRef(null);
+  const isFirstMountRef = useRef(true);
+  const lastSeekTimeRef = useRef(0);
+  const currentVideoIdRef = useRef(null);
+  const prevActiveIndexRef = useRef(activeIndex);
+  const currentVideoId = songs[activeIndex]?.videoId;
+  currentVideoIdRef.current = currentVideoId;
+
+  const [audioSrc, setAudioSrc] = useState('');
+
+  if (prevActiveIndexRef.current !== activeIndex) {
+    prevActiveIndexRef.current = activeIndex;
+    setElapsed(0);
+    setBaseElapsed(0);
+    lastSeekTimeRef.current = 0;
+  }
+
+  const [voiceJoined, setVoiceJoined] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [remoteAudioStream, setRemoteAudioStream] = useState(null);
+
+  const localStreamRef = useRef(null);
+  const peerRef = useRef(null);
+  const pendingCandidatesRef = useRef([]);
+  const voiceJoinedRef = useRef(false);
+  const remoteAudioRef = useRef(null);
+
+  useEffect(() => { voiceJoinedRef.current = voiceJoined; }, [voiceJoined]);
+
+  useEffect(() => {
+    if (remoteAudioRef.current && remoteAudioStream) {
+      remoteAudioRef.current.srcObject = remoteAudioStream;
+    }
+  }, [remoteAudioStream]);
+
+  useEffect(() => {
+    const checkSyncUrl = () => {
+      const hashParts = window.location.hash.split('?');
+      if (hashParts.length > 1) {
+        const params = new URLSearchParams(hashParts[1]);
+        const sc = params.get('sync');
+        if (sc && sc !== syncRoomCode) {
+          setSyncRoomCode(sc.toUpperCase());
+        }
+      }
+    };
+    checkSyncUrl();
+    window.addEventListener('hashchange', checkSyncUrl);
+    return () => window.removeEventListener('hashchange', checkSyncUrl);
+  }, [syncRoomCode]);
+
+  useEffect(() => {
+    if (socket && syncRoomCode) {
+      socket.emit('join-room', { roomCode: syncRoomCode });
+      socket.emit('request-feed-sync');
+    }
+  }, [socket, syncRoomCode]);
+
+  useEffect(() => {
+    let active = true;
+    if (currentVideoId) {
+      setAudioSrc('');
+      fetchAudioUrl(currentVideoId).then(url => {
+        if (active && url) {
+          setAudioSrc(url);
+        }
+      });
+    }
+    return () => { active = false; };
+  }, [currentVideoId]);
+
+  const togglePlay = useCallback((isRemote = false) => {
+    const nextState = !isPlaying;
+    setIsPlaying(nextState);
+    
+    if (!isRemote && socket && syncRoomCode) {
+      socket.emit('sync-feed-state', { activeIndex, isPlaying: nextState, elapsed, timestamp: Date.now(), song: songs[activeIndex] });
+    }
+
+    if (audioRef.current) {
+      if (nextState) {
+        audioRef.current.play().catch(()=>{});
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, songs]);
+
   useEffect(() => {
     if (audioRef.current) {
       if (isPlaying) {
@@ -239,14 +351,6 @@ export function FeedProvider({ children }) {
         if (isLiked) s.add(vid); else s.delete(vid);
         return s;
       });
-    }
-  };
-
-  const handleAudioEnded = () => {
-    if (activeIndex < songs.length - 1) {
-      changeTrack(activeIndex + 1, false);
-    } else if (nextPageToken && !loading) {
-      loadFeed(false).then(() => changeTrack(activeIndex + 1, false));
     }
   };
 
@@ -482,6 +586,14 @@ export function FeedProvider({ children }) {
       fetchLikeCount(currentVideoId);
     }
   }, [currentVideoId, fetchLikeCount]);
+
+  const handleAudioEnded = () => {
+    if (activeIndex < songs.length - 1) {
+      changeTrack(activeIndex + 1, false);
+    } else if (nextPageToken && !loading) {
+      loadFeed(false).then(() => changeTrack(activeIndex + 1, false));
+    }
+  };
 
   return (
     <FeedContext.Provider value={{
