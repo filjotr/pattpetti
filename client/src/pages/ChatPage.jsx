@@ -92,7 +92,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col bg-slate-950 text-white" style={{ height: '100dvh', paddingBottom: 'calc(var(--nav-height) + 10px)' }}>
+    <div className="chat-page-container flex flex-col text-white" style={{ background: 'var(--bg)' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-slate-900/90 backdrop-blur-md sticky top-0 z-20">
         {activeDmUser ? (

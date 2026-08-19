@@ -335,12 +335,19 @@ body {
 
 /* Hide bottom nav when virtual keyboard is open */
 @media (max-height: 500px) {
-  .bottom-nav {
-    display: none !important;
-  }
+  .bottom-nav { display: none !important; }
+  .chat-page-container { padding-bottom: 10px !important; }
 }
 body:has(input:focus, textarea:focus) .bottom-nav {
   display: none !important;
+}
+body:has(input:focus, textarea:focus) .chat-page-container {
+  padding-bottom: 10px !important;
+}
+
+.chat-page-container {
+  height: 100dvh;
+  padding-bottom: calc(var(--nav-height) + 10px);
 }
 
 .nav-item {

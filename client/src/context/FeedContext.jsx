@@ -667,11 +667,18 @@ export function FeedProvider({ children }) {
         <YouTube
           videoId={currentVideoId}
           opts={{
+            width: '200',
+            height: '200',
             playerVars: {
-              autoplay: isPlaying ? 1 : 0,
+              autoplay: 1,
               controls: 0,
               disablekb: 1,
-              playsinline: 1
+              playsinline: 1,
+              fs: 0,
+              iv_load_policy: 3,
+              rel: 0,
+              modestbranding: 1,
+              origin: typeof window !== 'undefined' ? window.location.origin : '*'
             }
           }}
           onReady={onReady}
@@ -680,9 +687,15 @@ export function FeedProvider({ children }) {
             console.error('[YouTube API] Playback Error!', e);
             setIsAudioPlaying(false);
             setIsPlaying(false);
+            // Auto skip if video is unplayable
+            setTimeout(() => {
+              if (songs.length > 1) {
+                changeTrack((activeIndex + 1) % songs.length, false);
+              }
+            }, 2000);
           }}
           className="hidden-youtube-player"
-          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: '1px', height: '1px' }}
+          style={{ position: 'fixed', zIndex: -100, top: '-1000px', left: '-1000px', opacity: 0.01, pointerEvents: 'none' }}
         />
       )}
     </FeedContext.Provider>
