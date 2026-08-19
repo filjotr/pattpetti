@@ -16,11 +16,45 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
   const [isDragging, setIsDragging] = useState(false);
   const [localProgress, setLocalProgress] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const playerAreaRef = useRef(null);
+  const progressAreaRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Strictly prevent page scroll when interacting with the music player or progress bar
+  useEffect(() => {
+    const preventScroll = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const playerEl = playerAreaRef.current;
+    const progressEl = progressAreaRef.current;
+
+    // We must use native event listeners with { passive: false } to reliably prevent default scroll
+    if (playerEl) {
+      playerEl.addEventListener('touchmove', preventScroll, { passive: false });
+      playerEl.addEventListener('wheel', preventScroll, { passive: false });
+    }
+    if (progressEl) {
+      progressEl.addEventListener('touchmove', preventScroll, { passive: false });
+      progressEl.addEventListener('wheel', preventScroll, { passive: false });
+    }
+
+    return () => {
+      if (playerEl) {
+        playerEl.removeEventListener('touchmove', preventScroll);
+        playerEl.removeEventListener('wheel', preventScroll);
+      }
+      if (progressEl) {
+        progressEl.removeEventListener('touchmove', preventScroll);
+        progressEl.removeEventListener('wheel', preventScroll);
+      }
+    };
   }, []);
 
   const liveDuration = durations?.[song?.videoId];
@@ -167,8 +201,10 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
 
       {/* Center — Vinyl + Waveform */}
       <div 
+        ref={playerAreaRef}
         className={`relative z-20 flex flex-col items-center gap-6 cursor-pointer ${isMobile ? 'mt-28' : ''}`}
         onClick={handleTogglePlay}
+        style={{ touchAction: 'none' }}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -204,8 +240,10 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
       </div>
 
       {/* Progress bar and Timer */}
-      <div className="absolute left-0 right-0 mx-auto w-[80%] max-w-[320px] z-20 flex flex-col pointer-events-auto"
-           style={{ bottom: 'calc(var(--nav-height) + 30px)' }}
+      <div 
+           ref={progressAreaRef}
+           className="absolute left-0 right-0 mx-auto w-[80%] max-w-[320px] z-20 flex flex-col pointer-events-auto"
+           style={{ bottom: 'calc(var(--nav-height) + 30px)', touchAction: 'none' }}
            onClick={(e) => e.stopPropagation()} 
            onPointerDown={(e) => e.stopPropagation()}
       >
