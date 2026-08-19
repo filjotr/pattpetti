@@ -216,7 +216,7 @@ router.get('/details/:videoId', async (req, res) => {
   }
 });
 
-const play = require('play-dl');
+const ytdl = require('@distube/ytdl-core');
 
 /* =========================================================
    AUDIO STREAM
@@ -236,19 +236,36 @@ router.all('/audio/:videoId', async (req, res) => {
 
   try {
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const info = await ytdl.getInfo(youtubeUrl);
     
-    // Use play-dl to get the stream
-    const streamInfo = await play.stream(youtubeUrl, { discordPlayerCompatibility: false });
+    // CRITICAL: iOS Safari ONLY supports mp4/m4a audio natively. It will instantly crash and throw onError on webm.
+    // We must force the mp4 container.
+    let format = ytdl.chooseFormat(info.formats, { 
+      filter: f => f.container === 'mp4' && f.hasAudio && !f.hasVideo 
+    });
     
-    res.setHeader('Content-Type', streamInfo.type === 'opus' ? 'audio/ogg' : 'audio/webm');
+    if (!format) {
+       // Fallback to highest audio if mp4 is somehow missing, though iOS will break on webm.
+       format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
+    }
+
+    if (!format) {
+      return res.status(404).json({ message: 'No audio format available' });
+    }
+
+    res.setHeader('Content-Type', 'audio/mp4');
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'no-cache');
+    
+    if (format.contentLength) {
+      res.setHeader('Content-Length', format.contentLength);
+    }
 
     if (req.method === 'HEAD') {
       return res.end();
     }
 
-    const stream = streamInfo.stream;
+    const stream = ytdl(youtubeUrl, { format });
     
     stream.on('error', (err) => {
       console.error('[Audio Proxy Error]', err);
