@@ -199,6 +199,7 @@ export default function ChatPage() {
             />
             <button
               onClick={sendDm}
+              onPointerDown={(e) => e.preventDefault()}
               disabled={!dmText.trim()}
               className="btn-primary flex items-center justify-center transition-transform active:scale-95"
               style={{ borderRadius: 50, width: 46, height: 46, padding: 0 }}

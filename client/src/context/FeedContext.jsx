@@ -702,7 +702,7 @@ export function FeedProvider({ children }) {
             }, 2000);
           }}
           className="hidden-youtube-player"
-          style={{ position: 'fixed', zIndex: -100, top: '-1000px', left: '-1000px', opacity: 0.01, pointerEvents: 'none' }}
+          style={{ position: 'fixed', zIndex: -100, top: '0px', left: '0px', opacity: 0.01 }}
         />
       )}
     </FeedContext.Provider>
