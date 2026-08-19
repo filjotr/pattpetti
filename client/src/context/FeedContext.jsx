@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import YouTube from 'react-youtube';
 
 import { API_BASE_URL } from '../utils/config';
 import { useAuth } from './AuthContext';
@@ -7,6 +6,19 @@ import { fetchTrendingByGenre } from '../utils/youtube';
 import { useSocket } from './SocketContext';
 
 const FeedContext = createContext();
+
+async function fetchAudioUrl(videoId) {
+  const instances = ['https://vid.puffyan.us', 'https://invidious.jing.rocks', 'https://invidious.nerdvpn.de'];
+  for (const instance of instances) {
+    try {
+      const res = await fetch(`${instance}/api/v1/videos/${videoId}`);
+      const data = await res.json();
+      const audioFormat = data.adaptiveFormats?.find(f => f.type && f.type.includes('audio/mp4'));
+      if (audioFormat?.url) return audioFormat.url;
+    } catch (e) {}
+  }
+  return null;
+}
 export const useFeed = () => useContext(FeedContext);
 
 const ICE_CONFIG = {
@@ -70,118 +82,14 @@ export function FeedProvider({ children }) {
   const [songs, setSongs] = useState(cachedState ? cachedState.songs : []);
   const songsRef = useRef(songs);
   useEffect(() => {
-    songsRef.current = songs;
-  }, [songs]);
-  const [loading, setLoading] = useState(false);
-  const [nextPageToken, setNextPageToken] = useState(null);
-  const [likedSongs, setLikedSongs] = useState(new Set());
-  const [likeCounts, setLikeCounts] = useState({});
-  const [commentCounts, setCommentCounts] = useState({});
-
-  const { socket } = useSocket() || {};
-  const [syncRoomCode, setSyncRoomCode] = useState(null);
-  const [syncMembers, setSyncMembers] = useState([]);
-
-  const [activeIndex, setActiveIndex] = useState(cachedState ? (cachedState.activeIndex || 0) : 0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const isPlayingRef = useRef(isPlaying);
-  useEffect(() => {
-    isPlayingRef.current = isPlaying;
-  }, [isPlaying]);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [elapsed, setElapsed] = useState(cachedState ? (cachedState.elapsed || 0) : 0);
-  const [baseElapsed, setBaseElapsed] = useState(0);
-  const [startTime, setStartTime] = useState(Date.now());
-  const [durations, setDurations] = useState({});
-  const ytPlayerRef = useRef(null);
-  const isFirstMountRef = useRef(true);
-  const lastSeekTimeRef = useRef(0);
-  const currentVideoIdRef = useRef(null);
-  const prevActiveIndexRef = useRef(activeIndex);
-  const currentVideoId = songs[activeIndex]?.videoId;
-  currentVideoIdRef.current = currentVideoId;
-
-  if (prevActiveIndexRef.current !== activeIndex) {
-    prevActiveIndexRef.current = activeIndex;
-    setElapsed(0);
-    setBaseElapsed(0);
-    lastSeekTimeRef.current = 0;
-  }
-
-  const audioSrc = '';
-
-  const [voiceJoined, setVoiceJoined] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [remoteAudioStream, setRemoteAudioStream] = useState(null);
-
-  const localStreamRef = useRef(null);
-  const peerRef = useRef(null);
-  const pendingCandidatesRef = useRef([]);
-  const voiceJoinedRef = useRef(false);
-  const remoteAudioRef = useRef(null);
-  const silentAudioRef = useRef(null);
-
-  useEffect(() => { voiceJoinedRef.current = voiceJoined; }, [voiceJoined]);
-
-  useEffect(() => {
-    if (remoteAudioRef.current && remoteAudioStream) {
-      remoteAudioRef.current.srcObject = remoteAudioStream;
-    }
-  }, [remoteAudioStream]);
-
-  useEffect(() => {
-    const checkSyncUrl = () => {
-      const hashParts = window.location.hash.split('?');
-      if (hashParts.length > 1) {
-        const params = new URLSearchParams(hashParts[1]);
-        const sc = params.get('sync');
-        if (sc && sc !== syncRoomCode) {
-          setSyncRoomCode(sc.toUpperCase());
-        }
-      }
-    };
-    checkSyncUrl();
-    window.addEventListener('hashchange', checkSyncUrl);
-    return () => window.removeEventListener('hashchange', checkSyncUrl);
-  }, [syncRoomCode]);
-
-  useEffect(() => {
-    if (socket && syncRoomCode) {
-      socket.emit('join-room', { roomCode: syncRoomCode });
-      socket.emit('request-feed-sync');
-    }
-  }, [socket, syncRoomCode]);
-
-  const togglePlay = useCallback((isRemote = false) => {
-    const nextState = !isPlaying;
-    setIsPlaying(nextState);
-    
-    if (!isRemote && socket && syncRoomCode) {
-      socket.emit('sync-feed-state', { activeIndex, isPlaying: nextState, elapsed, timestamp: Date.now(), song: songs[activeIndex] });
-    }
-
-    if (ytPlayerRef.current) {
-      if (nextState) {
-        ytPlayerRef.current.playVideo();
-        silentAudioRef.current?.play().catch(()=>{});
-      } else {
-        ytPlayerRef.current.pauseVideo();
-        silentAudioRef.current?.pause();
-      }
-    }
-  }, [socket, syncRoomCode, activeIndex, isPlaying, elapsed, songs]);
-
-  useEffect(() => {
-    if (ytPlayerRef.current) {
+    if (audioRef.current) {
       if (isPlaying) {
-        ytPlayerRef.current.playVideo();
-        silentAudioRef.current?.play().catch(()=>{});
+        audioRef.current.play().catch(()=>{});
       } else {
-        ytPlayerRef.current.pauseVideo();
-        silentAudioRef.current?.pause();
+        audioRef.current.pause();
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, audioSrc]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -226,8 +134,8 @@ export function FeedProvider({ children }) {
   useEffect(() => {
     if (!isPlaying || isAudioPlaying) return;
     const forceUnlock = () => {
-      if (ytPlayerRef.current && typeof ytPlayerRef.current.playVideo === 'function') {
-        ytPlayerRef.current.playVideo();
+      if (audioRef.current && isPlaying) {
+        audioRef.current.play().catch(()=>{});
       }
     };
     window.addEventListener('pointerdown', forceUnlock, { passive: true });
@@ -334,6 +242,14 @@ export function FeedProvider({ children }) {
     }
   };
 
+  const handleAudioEnded = () => {
+    if (activeIndex < songs.length - 1) {
+      changeTrack(activeIndex + 1, false);
+    } else if (nextPageToken && !loading) {
+      loadFeed(false).then(() => changeTrack(activeIndex + 1, false));
+    }
+  };
+
   const fetchLikeCount = useCallback(async (videoId) => {
     if (!videoId || likeCounts[videoId] !== undefined) return;
     try {
@@ -346,9 +262,9 @@ export function FeedProvider({ children }) {
   }, [likeCounts]);
 
   const seekTo = useCallback((seconds, isRemote = false) => {
-    if (ytPlayerRef.current && !isNaN(seconds)) {
+    if (audioRef.current && !isNaN(seconds)) {
       lastSeekTimeRef.current = Date.now();
-      ytPlayerRef.current.seekTo(seconds, true);
+      audioRef.current.currentTime = seconds;
       setBaseElapsed(seconds);
       setStartTime(Date.now());
       setElapsed(seconds);
@@ -545,11 +461,11 @@ export function FeedProvider({ children }) {
         });
         navigator.mediaSession.setActionHandler('play', () => {
           setIsPlaying(true);
-          if (ytPlayerRef.current) ytPlayerRef.current.playVideo();
+          if (audioRef.current) audioRef.current.play().catch(()=>{});
         });
         navigator.mediaSession.setActionHandler('pause', () => {
           setIsPlaying(false);
-          if (ytPlayerRef.current) ytPlayerRef.current.pauseVideo();
+          if (audioRef.current) audioRef.current.pause();
         });
         navigator.mediaSession.setActionHandler('nexttrack', () => {
           setActiveIndex(prev => prev + 1);
@@ -582,62 +498,41 @@ export function FeedProvider({ children }) {
     }}>
       {children}
       <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
-      <audio ref={silentAudioRef} loop src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" style={{ display: 'none' }} playsInline />
-      {currentVideoId && (
-        <YouTube
-          videoId={currentVideoId}
-          opts={{
-            width: '200',
-            height: '200',
-            playerVars: {
-              autoplay: isPlaying ? 1 : 0,
-              controls: 0,
-              disablekb: 1,
-              playsinline: 1,
-              fs: 0,
-              iv_load_policy: 3,
-              rel: 0,
-              modestbranding: 1,
-              origin: typeof window !== 'undefined' ? window.location.origin : '*'
+      {audioSrc && (
+        <audio
+          ref={audioRef}
+          src={audioSrc}
+          autoPlay={isPlaying}
+          playsInline
+          style={{ display: 'none' }}
+          onTimeUpdate={(e) => {
+            if (Date.now() - lastSeekTimeRef.current > 1500) {
+              const ct = e.target.currentTime;
+              setElapsed(ct);
+              setBaseElapsed(ct);
+              setStartTime(Date.now());
             }
           }}
-          onReady={(e) => {
-            ytPlayerRef.current = e.target;
-            const dur = e.target.getDuration();
-            if (dur) {
-              setDurations(prev => ({ ...prev, [currentVideoId]: dur }));
+          onPlay={() => setIsAudioPlaying(true)}
+          onPause={() => setIsAudioPlaying(false)}
+          onEnded={handleAudioEnded}
+          onLoadedMetadata={(e) => {
+            const dur = e.target.duration;
+            if (dur && currentVideoIdRef.current) {
+              setDurations(prev => {
+                if (prev[currentVideoIdRef.current] === dur) return prev;
+                return { ...prev, [currentVideoIdRef.current]: dur };
+              });
             }
             if (isFirstMountRef.current && (baseElapsed > 0 || elapsed > 0)) {
-              e.target.seekTo(baseElapsed || elapsed, true);
-            }
-          }}
-          onStateChange={(e) => {
-            const state = e.data;
-            if (state === 1) {
-              setIsAudioPlaying(true);
-              if (Date.now() - lastSeekTimeRef.current > 1500) {
-                const ct = e.target.getCurrentTime();
-                setElapsed(ct);
-                setBaseElapsed(ct);
-                setStartTime(Date.now());
-              }
-            } else if (state === 2 || state === 3) {
-              setIsAudioPlaying(false);
-            } else if (state === 0) {
-              if (activeIndex < songs.length - 1) {
-                changeTrack(activeIndex + 1, false);
-              } else if (nextPageToken && !loading) {
-                loadFeed(false).then(() => changeTrack(activeIndex + 1, false));
-              }
+              e.target.currentTime = baseElapsed || elapsed;
             }
           }}
           onError={(e) => {
-            console.error('[YouTube API Error]', e);
-            setIsAudioPlaying(false);
-            setIsPlaying(false);
+             console.error('[Audio Error]', e);
+             setIsAudioPlaying(false);
+             handleAudioEnded(); // skip to next if error
           }}
-          className="hidden-youtube-player"
-          style={{ position: 'fixed', zIndex: -100, top: '0px', left: '0px', opacity: 0.01 }}
         />
       )}
     </FeedContext.Provider>
