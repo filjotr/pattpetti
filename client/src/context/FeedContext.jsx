@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import YouTube from 'react-youtube';
+
 import { API_BASE_URL } from '../utils/config';
 import { useAuth } from './AuthContext';
 import { fetchTrendingByGenre } from '../utils/youtube';
@@ -93,18 +93,13 @@ export function FeedProvider({ children }) {
   const [baseElapsed, setBaseElapsed] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
   const [durations, setDurations] = useState({});
-  const ytPlayerRef = useRef(null);
-  const audioRef = useRef({
-    play: async () => { if (ytPlayerRef.current) ytPlayerRef.current.playVideo(); },
-    pause: () => { if (ytPlayerRef.current) ytPlayerRef.current.pauseVideo(); },
-    set currentTime(val) { if (ytPlayerRef.current) ytPlayerRef.current.seekTo(val, true); },
-    get currentTime() { return ytPlayerRef.current ? ytPlayerRef.current.getCurrentTime() : 0; }
-  });
+  const audioRef = useRef(null);
   const isFirstMountRef = useRef(true);
   const lastSeekTimeRef = useRef(0);
   const currentVideoIdRef = useRef(null);
   const prevActiveIndexRef = useRef(activeIndex);
-  currentVideoIdRef.current = songs[activeIndex]?.videoId;
+  const currentVideoId = songs[activeIndex]?.videoId;
+  currentVideoIdRef.current = currentVideoId;
 
   if (prevActiveIndexRef.current !== activeIndex) {
     prevActiveIndexRef.current = activeIndex;
@@ -112,6 +107,11 @@ export function FeedProvider({ children }) {
     setBaseElapsed(0);
     lastSeekTimeRef.current = 0;
   }
+
+  const audioSrc = useMemo(() => {
+    if (!currentVideoId) return '';
+    return `${API_BASE_URL}/youtube/audio/${currentVideoId}`;
+  }, [currentVideoId]);
 
   // WebRTC Voice Chat State
   const [voiceJoined, setVoiceJoined] = useState(false);
@@ -582,74 +582,11 @@ export function FeedProvider({ children }) {
     }
   }, [activeIndex, songs]);
 
-  const currentVideoId = songs[activeIndex]?.videoId;
   useEffect(() => {
     if (currentVideoId) {
       fetchLikeCount(currentVideoId);
     }
   }, [currentVideoId, fetchLikeCount]);
-
-  useEffect(() => {
-    if (currentVideoId && !isFirstMountRef.current && ytPlayerRef.current) {
-      if (isPlaying) {
-        ytPlayerRef.current.playVideo();
-      }
-    }
-  }, [currentVideoId]);
-
-  useEffect(() => {
-    let interval;
-    if (isPlaying && isAudioPlaying && ytPlayerRef.current) {
-      interval = setInterval(async () => {
-        if (Date.now() - lastSeekTimeRef.current > 1500) {
-          try {
-            const ct = await ytPlayerRef.current.getCurrentTime();
-            if (ct !== undefined && !isNaN(ct)) {
-              setElapsed(ct);
-              setBaseElapsed(ct);
-              setStartTime(Date.now());
-            }
-          } catch (e) {}
-        }
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, isAudioPlaying]);
-
-  const onReady = (event) => {
-    ytPlayerRef.current = event.target;
-    const targetTime = baseElapsed || elapsed;
-    if (isFirstMountRef.current && targetTime > 0 && !isNaN(targetTime)) {
-      event.target.seekTo(targetTime, true);
-    }
-    if (isPlayingRef.current) {
-      event.target.playVideo();
-    }
-  };
-
-  const onStateChange = async (event) => {
-    // 1: playing, 2: paused, 0: ended, 5: cued, -1: unstarted
-    if (event.data === 1) {
-      setIsAudioPlaying(true);
-      try {
-        const dur = await event.target.getDuration();
-        if (dur && currentVideoIdRef.current && !isNaN(dur)) {
-          setDurations(prev => {
-            if (prev[currentVideoIdRef.current] === dur) return prev;
-            return { ...prev, [currentVideoIdRef.current]: dur };
-          });
-        }
-      } catch (e) {}
-    } else if (event.data === 2) {
-      setIsAudioPlaying(false);
-    } else if (event.data === 0) {
-      handleAudioEnded();
-    } else if ((event.data === 5 || event.data === -1) && isPlayingRef.current) {
-      try {
-        event.target.playVideo();
-      } catch (e) {}
-    }
-  };
 
   return (
     <FeedContext.Provider value={{
@@ -669,40 +606,53 @@ export function FeedProvider({ children }) {
       <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
       {/* Silent Background Audio for PWA Keep-Alive and MediaSession (Notification Controls) */}
       <audio ref={silentAudioRef} loop src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" style={{ display: 'none' }} playsInline />
-      {/* Global Audio Player for Feed via YouTube Iframe */}
+      {/* Global Audio Player for Feed via Backend Proxy */}
       {currentVideoId && (
-        <YouTube
-          videoId={currentVideoId}
-          opts={{
-            width: '200',
-            height: '200',
-            playerVars: {
-              autoplay: 1,
-              controls: 0,
-              disablekb: 1,
-              playsinline: 1,
-              fs: 0,
-              iv_load_policy: 3,
-              rel: 0,
-              modestbranding: 1,
-              origin: typeof window !== 'undefined' ? window.location.origin : '*'
+        <audio
+          ref={audioRef}
+          src={audioSrc}
+          autoPlay={isPlaying}
+          playsInline
+          style={{ display: 'none' }}
+          onTimeUpdate={(e) => {
+            if (Date.now() - lastSeekTimeRef.current > 1500) {
+              const ct = e.target.currentTime;
+              setElapsed(ct);
+              setBaseElapsed(ct);
+              setStartTime(Date.now());
             }
           }}
-          onReady={onReady}
-          onStateChange={onStateChange}
+          onPlay={() => setIsAudioPlaying(true)}
+          onPause={() => setIsAudioPlaying(false)}
+          onEnded={() => {
+            if (activeIndex < songs.length - 1) {
+              changeTrack(activeIndex + 1, false);
+            } else if (nextPageToken && !loading) {
+              loadFeed(false).then(() => changeTrack(activeIndex + 1, false));
+            }
+          }}
           onError={(e) => {
-            console.error('[YouTube API] Playback Error!', e);
+            console.error('[Audio Element Error]', e.target.error);
             setIsAudioPlaying(false);
             setIsPlaying(false);
-            // Auto skip if video is unplayable
             setTimeout(() => {
               if (songs.length > 1) {
                 changeTrack((activeIndex + 1) % songs.length, false);
               }
             }, 2000);
           }}
-          className="hidden-youtube-player"
-          style={{ position: 'fixed', zIndex: -100, top: '0px', left: '0px', opacity: 0.01 }}
+          onLoadedMetadata={(e) => {
+            const dur = e.target.duration;
+            if (dur && currentVideoId) {
+              setDurations(prev => {
+                if (prev[currentVideoId] === dur) return prev;
+                return { ...prev, [currentVideoId]: dur };
+              });
+            }
+            if (isFirstMountRef.current && (baseElapsed > 0 || elapsed > 0)) {
+              e.target.currentTime = baseElapsed || elapsed;
+            }
+          }}
         />
       )}
     </FeedContext.Provider>
