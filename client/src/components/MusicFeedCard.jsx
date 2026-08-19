@@ -32,10 +32,27 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
   const progress = isDragging ? localProgress : actualProgress;
 
   const lastSeekCommitRef = useRef(0);
+  const touchStartY = useRef(0);
+  const lastTapRef = useRef(0);
 
-  const handleTogglePlay = () => {
+  const handleRobustTogglePlay = () => {
     if (!isActive) return;
+    const now = Date.now();
+    if (now - lastTapRef.current < 400) return; // Prevent double tap from synthetic onClick
+    lastTapRef.current = now;
     togglePlay();
+  };
+
+  const handlePlayerTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handlePlayerTouchEnd = (e) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    // If the finger moved less than 15px, treat it as a robust tap
+    if (Math.abs(touchEndY - touchStartY.current) < 15) {
+      handleRobustTogglePlay();
+    }
   };
 
   const commitSeek = (valProgress) => {
@@ -172,7 +189,9 @@ export default function MusicFeedCard({ song, isActive, index, onOpenComment }) 
       <div 
         ref={playerAreaRef}
         className={`relative z-20 flex flex-col items-center gap-6 cursor-pointer ${isMobile ? 'mt-28' : ''}`}
-        onClick={handleTogglePlay}
+        onClick={handleRobustTogglePlay}
+        onTouchStart={handlePlayerTouchStart}
+        onTouchEnd={handlePlayerTouchEnd}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
