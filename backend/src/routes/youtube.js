@@ -216,7 +216,7 @@ router.get('/details/:videoId', async (req, res) => {
   }
 });
 
-const ytdl = require('@distube/ytdl-core');
+const play = require('play-dl');
 
 /* =========================================================
    AUDIO STREAM
@@ -236,28 +236,19 @@ router.all('/audio/:videoId', async (req, res) => {
 
   try {
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    const info = await ytdl.getInfo(youtubeUrl);
     
-    // ytdl-core provides a filter for audio only
-    const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
-
-    if (!format) {
-      return res.status(404).json({ message: 'No audio format available' });
-    }
-
-    res.setHeader('Content-Type', 'audio/mp4');
+    // Use play-dl to get the stream
+    const streamInfo = await play.stream(youtubeUrl, { discordPlayerCompatibility: false });
+    
+    res.setHeader('Content-Type', streamInfo.type === 'opus' ? 'audio/ogg' : 'audio/webm');
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'no-cache');
-    
-    if (format.contentLength) {
-      res.setHeader('Content-Length', format.contentLength);
-    }
 
     if (req.method === 'HEAD') {
       return res.end();
     }
 
-    const stream = ytdl(youtubeUrl, { format });
+    const stream = streamInfo.stream;
     
     stream.on('error', (err) => {
       console.error('[Audio Proxy Error]', err);
