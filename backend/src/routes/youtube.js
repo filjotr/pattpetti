@@ -216,6 +216,8 @@ router.get('/details/:videoId', async (req, res) => {
   }
 });
 
+const ytdl = require('@distube/ytdl-core');
+
 /* =========================================================
    AUDIO STREAM
    GET /api/youtube/audio/:videoId
@@ -224,231 +226,58 @@ router.get('/details/:videoId', async (req, res) => {
 
 router.all('/audio/:videoId', async (req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
-    return res.status(405).json({
-      message: 'Method Not Allowed',
-    });
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
   const { videoId } = req.params;
-
   if (!videoId) {
-    return res.status(400).json({
-      message: 'Video ID required',
-    });
+    return res.status(400).json({ message: 'Video ID required' });
   }
 
-  console.log(
-    `[Audio API] ${req.method} request for video: ${videoId}`
-  );
-
   try {
-    const youtubeUrl =
-      `https://www.youtube.com/watch?v=${videoId}`;
+    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const info = await ytdl.getInfo(youtubeUrl);
+    
+    // ytdl-core provides a filter for audio only
+    const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
 
-    /* Get fresh YouTube information */
-    let info;
-
-    try {
-      const subprocess = youtubedl.exec(youtubeUrl, {
-        dumpJson: true,
-        noWarnings: true,
-        preferFreeFormats: true,
-        skipDownload: true
-      });
-      const { stdout } = await subprocess;
-      info = JSON.parse(stdout);
-      console.log('[Audio API] youtube-dl-exec SUCCESS');
-    } catch (error) {
-      console.error('[Audio API] youtube-dl-exec FAILED:', error?.message);
-      return res.status(502).json({
-        message: 'Unable to get YouTube video information (youtube-dl-exec failed)',
-        error: error?.message || 'Unknown error'
-      });
+    if (!format) {
+      return res.status(404).json({ message: 'No audio format available' });
     }
 
-    if (!info) {
-      return res.status(404).json({
-        message: 'Video information not found',
-      });
+    res.setHeader('Content-Type', 'audio/mp4');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    if (format.contentLength) {
+      res.setHeader('Content-Length', format.contentLength);
     }
 
-    const formats = info.formats || [];
-
-    /* Find audio-only formats or formats with audio */
-    const audioFormats = formats.filter((format) => {
-      // yt-dlp has acodec !== 'none' for audio
-      return format.acodec !== 'none' && format.vcodec === 'none';
-    });
-
-    if (audioFormats.length === 0) {
-      console.error(
-        `[Audio API] No audio formats found for ${videoId}`
-      );
-
-      return res.status(404).json({
-        message: 'No audio format available',
-      });
+    if (req.method === 'HEAD') {
+      return res.end();
     }
 
-    /* Prefer m4a or webm */
-    const chosen =
-      audioFormats.find((format) => (format.ext || '').includes('m4a')) ||
-      audioFormats.find((format) => (format.ext || '').includes('webm')) ||
-      audioFormats[audioFormats.length - 1];
-
-    if (!chosen || !chosen.url) {
-      return res.status(404).json({
-        message: 'Audio URL unavailable',
-      });
-    }
-
-    console.log('[Audio API] --- SELECTED FORMAT ---');
-    console.log(`[Audio API] videoId: ${videoId}`);
-    console.log(`[Audio API] ext: ${chosen.ext}`);
-    console.log(`[Audio API] acodec: ${chosen.acodec}`);
-    console.log(`[Audio API] abr: ${chosen.abr}`);
-    console.log(`[Audio API] filesize: ${chosen.filesize || 'unknown'}`);
-    console.log('-----------------------------------');
-
-    /* ---------------- REQUEST HEADERS ---------------- */
-
-    const headers = { ...info.http_headers };
-    headers.Accept = '*/*';
-
-    /* Forward Range request */
-    if (req.headers.range) {
-      headers.Range = req.headers.range;
-
-      console.log(
-        `[Audio API] Range: ${req.headers.range}`
-      );
-    }
-
-    const proxyRequest = https.get(
-      chosen.url,
-      { headers },
-      (sourceResponse) => {
-        console.log(
-          `[Audio API] YouTube status: ${sourceResponse.statusCode}`
-        );
-
-        /*
-          Forward correct status:
-          200 = full file
-          206 = partial content / seek
-        */
-
-        res.status(sourceResponse.statusCode || 200);
-
-        /* Content type */
-        res.setHeader(
-          'Content-Type',
-          chosen.mimeType || 'audio/mp4'
-        );
-
-        /* Range support */
-        res.setHeader(
-          'Accept-Ranges',
-          'bytes'
-        );
-
-        /* Content length */
-        if (sourceResponse.headers['content-length']) {
-          res.setHeader(
-            'Content-Length',
-            sourceResponse.headers['content-length']
-          );
-        }
-
-        /* Content range */
-        if (sourceResponse.headers['content-range']) {
-          res.setHeader(
-            'Content-Range',
-            sourceResponse.headers['content-range']
-          );
-        }
-
-        /* Cache control */
-        res.setHeader(
-          'Cache-Control',
-          'no-cache'
-        );
-
-        /*
-          HEAD request:
-          Send headers only.
-        */
-        if (req.method === 'HEAD') {
-          sourceResponse.destroy();
-          return res.end();
-        }
-
-        /* Stream audio */
-        sourceResponse.pipe(res);
-
-        sourceResponse.on('error', (error) => {
-          console.error(
-            '[Audio API] Source stream error:',
-            error.message
-          );
-
-          if (!res.headersSent) {
-            res.status(502).json({
-              message: 'YouTube stream error',
-            });
-          } else {
-            res.destroy();
-          }
-        });
-      }
-    );
-
-    proxyRequest.setTimeout(30000, () => {
-      console.error(
-        '[Audio API] Proxy timeout'
-      );
-
-      proxyRequest.destroy();
-
+    const stream = ytdl(youtubeUrl, { format });
+    
+    stream.on('error', (err) => {
+      console.error('[Audio Proxy Error]', err);
       if (!res.headersSent) {
-        res.status(504).json({
-          message: 'Audio stream timeout',
-        });
+        res.status(502).json({ message: 'Stream failed' });
+      } else {
+        res.end();
       }
     });
 
-    proxyRequest.on('error', (error) => {
-      console.error(
-        '[Audio API] Proxy error:',
-        error.message
-      );
-
-      if (!res.headersSent) {
-        res.status(502).json({
-          message: 'Audio proxy error',
-        });
-      }
-    });
-
-    /*
-      If client disconnects, stop YouTube request.
-    */
     req.on('close', () => {
-      if (!res.writableEnded) {
-        proxyRequest.destroy();
-      }
+      stream.destroy();
     });
+
+    stream.pipe(res);
 
   } catch (error) {
-    console.error(
-      '[Audio API] Unexpected error:',
-      error
-    );
-
+    console.error('[Audio Proxy Error]', error);
     if (!res.headersSent) {
-      return res.status(500).json({
-        message: 'Failed to stream audio',
-      });
+      return res.status(500).json({ message: 'Failed to stream audio', error: error.message });
     }
   }
 });
