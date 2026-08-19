@@ -49,7 +49,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen px-4 pt-12 pb-24" style={{ background: '#0F172A' }}>
+    <div className="min-h-[100dvh] px-4 pt-12 pb-24" style={{ background: 'var(--bg)' }}>
       <div className="flex items-center gap-3 mb-6">
         <Shield size={22} color="#41AEA9" />
         <h1 style={{ fontSize: 22, fontWeight: 900 }}>Admin Panel</h1>

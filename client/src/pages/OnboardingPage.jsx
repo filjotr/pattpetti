@@ -62,7 +62,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0F172A' }}>
+    <div className="min-h-[100dvh] flex items-center justify-center p-4" style={{ background: 'var(--bg)' }}>
       {/* Ambient glows */}
       <div className="ambient-bg">
         <div className="glow-1" />

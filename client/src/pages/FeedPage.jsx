@@ -80,13 +80,13 @@ export default function FeedPage() {
   }, [activeIndex]);
 
   return (
-    <div className="relative" style={{ background: '#0F172A' }}>
+    <div className="relative" style={{ background: 'var(--bg)' }}>
       {/* Feed */}
       <div ref={containerRef} className="feed-container">
         {songs.length === 0 && loading ? (
           <div
             className="feed-card"
-            style={{ background: '#0F172A', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}
+            style={{ background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}
           >
             <div className="w-12 h-12 rounded-full border-3 border-t-transparent animate-spin" style={{ border: '3px solid #41AEA9', borderTopColor: 'transparent' }} />
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Loading your feed...</p>

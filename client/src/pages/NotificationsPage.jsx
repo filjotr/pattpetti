@@ -34,7 +34,7 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div style={{ background: '#0F172A', padding: 20, paddingBottom: 100, minHeight: '100dvh' }}>
+    <div style={{ background: 'var(--bg)', padding: 20, paddingBottom: 100, minHeight: '100dvh' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">

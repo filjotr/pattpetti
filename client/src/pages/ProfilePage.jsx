@@ -68,7 +68,7 @@ export default function ProfilePage() {
   const isFollowing = followingSet.has(uid);
 
   return (
-    <div style={{ background: '#0F172A', paddingBottom: 100, minHeight: '100dvh' }}>
+    <div style={{ background: 'var(--bg)', paddingBottom: 100, minHeight: '100dvh' }}>
       {/* Hero gradient */}
       <div style={{
         height: 180,

@@ -62,7 +62,7 @@ export default function RoomPage() {
   }
 
   return (
-    <div style={{ background: '#0F172A', paddingBottom: 100, minHeight: '100dvh' }}>
+    <div style={{ background: 'var(--bg)', paddingBottom: 100, minHeight: '100dvh' }}>
       {/* Header */}
       <div className="px-4 pt-12 pb-4 flex items-center gap-3 border-b border-white/10">
         <button onClick={() => { leaveRoom(); navigate('/rooms'); }} className="btn-icon" style={{ width: 36, height: 36 }}>

@@ -94,7 +94,7 @@ export default function RoomsPage() {
   };
 
   return (
-    <div style={{ background: '#0F172A', padding: 20, paddingBottom: 100, minHeight: '100dvh' }}>
+    <div style={{ background: 'var(--bg)', padding: 20, paddingBottom: 100, minHeight: '100dvh' }}>
       <div className="flex items-center justify-between mb-6">
         <Radio size={22} color="#41AEA9" />
         <h1 style={{ fontSize: 22, fontWeight: 900 }}>Listening Rooms</h1>

@@ -361,7 +361,7 @@ export function FeedProvider({ children }) {
   }, [likeCounts]);
 
   const seekTo = useCallback((seconds, isRemote = false) => {
-    if (audioRef.current) {
+    if (audioRef.current && !isNaN(seconds)) {
       lastSeekTimeRef.current = Date.now();
       audioRef.current.currentTime = seconds;
       setBaseElapsed(seconds);
@@ -599,7 +599,7 @@ export function FeedProvider({ children }) {
         if (Date.now() - lastSeekTimeRef.current > 1500) {
           try {
             const ct = await ytPlayerRef.current.getCurrentTime();
-            if (ct !== undefined) {
+            if (ct !== undefined && !isNaN(ct)) {
               setElapsed(ct);
               setBaseElapsed(ct);
               setStartTime(Date.now());
@@ -613,26 +613,36 @@ export function FeedProvider({ children }) {
 
   const onReady = (event) => {
     ytPlayerRef.current = event.target;
-    if (isFirstMountRef.current && (baseElapsed > 0 || elapsed > 0)) {
-      event.target.seekTo(baseElapsed || elapsed, true);
+    const targetTime = baseElapsed || elapsed;
+    if (isFirstMountRef.current && targetTime > 0 && !isNaN(targetTime)) {
+      event.target.seekTo(targetTime, true);
+    }
+    if (isPlayingRef.current) {
+      event.target.playVideo();
     }
   };
 
-  const onStateChange = (event) => {
-    // 1: playing, 2: paused, 0: ended
+  const onStateChange = async (event) => {
+    // 1: playing, 2: paused, 0: ended, 5: cued, -1: unstarted
     if (event.data === 1) {
       setIsAudioPlaying(true);
-      const dur = event.target.getDuration();
-      if (dur && currentVideoIdRef.current) {
-        setDurations(prev => {
-          if (prev[currentVideoIdRef.current] === dur) return prev;
-          return { ...prev, [currentVideoIdRef.current]: dur };
-        });
-      }
+      try {
+        const dur = await event.target.getDuration();
+        if (dur && currentVideoIdRef.current && !isNaN(dur)) {
+          setDurations(prev => {
+            if (prev[currentVideoIdRef.current] === dur) return prev;
+            return { ...prev, [currentVideoIdRef.current]: dur };
+          });
+        }
+      } catch (e) {}
     } else if (event.data === 2) {
       setIsAudioPlaying(false);
     } else if (event.data === 0) {
       handleAudioEnded();
+    } else if ((event.data === 5 || event.data === -1) && isPlayingRef.current) {
+      try {
+        event.target.playVideo();
+      } catch (e) {}
     }
   };
 

@@ -50,7 +50,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div style={{ background: '#0F172A', padding: 20, paddingBottom: 100, minHeight: '100dvh' }}>
+    <div style={{ background: 'var(--bg)', padding: 20, paddingBottom: 120, minHeight: '100dvh' }}>
       <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>Search</h1>
 
       {/* Search bar */}
