@@ -216,12 +216,15 @@ router.get('/details/:videoId', async (req, res) => {
   }
 });
 
-const ytdl = require('@distube/ytdl-core');
+const ytdlDistube = require('@distube/ytdl-core');
+let ytdlYbd;
+try { ytdlYbd = require('@ybd-project/ytdl-core'); } catch(e) { ytdlYbd = null; }
 
 /* =========================================================
-   AUDIO STREAM
+   AUDIO STREAM PROXY
    GET /api/youtube/audio/:videoId
    HEAD /api/youtube/audio/:videoId
+   Streams audio through backend to avoid phone IP being 403-blocked by YouTube.
    ========================================================= */
 
 router.all('/audio/:videoId', async (req, res) => {
@@ -234,41 +237,80 @@ router.all('/audio/:videoId', async (req, res) => {
     return res.status(400).json({ message: 'Video ID required' });
   }
 
-  try {
-    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  // Helper: try fetching with a given ytdl implementation
+  async function tryStream(ytdl) {
     const info = await ytdl.getInfo(youtubeUrl);
-    
-    // CRITICAL: iOS Safari ONLY supports mp4/m4a audio natively. It will instantly crash and throw onError on webm.
-    // We must force the mp4 container.
-    let format = ytdl.chooseFormat(info.formats, { 
-      filter: f => f.container === 'mp4' && f.hasAudio && !f.hasVideo 
+    let format = ytdl.chooseFormat(info.formats, {
+      filter: f => f.container === 'mp4' && f.hasAudio && !f.hasVideo,
     });
-    
     if (!format) {
-       // Fallback to highest audio if mp4 is somehow missing, though iOS will break on webm.
-       format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
+      format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
     }
+    return { info, format, ytdl };
+  }
+
+  try {
+    let result = null;
+    // Try @ybd-project first (better 403 bypass), fall back to @distube
+    if (ytdlYbd) {
+      try { result = await tryStream(ytdlYbd); } catch(e) {
+        console.warn('[Audio Proxy] ybd failed, falling back to distube:', e.message);
+      }
+    }
+    if (!result) {
+      result = await tryStream(ytdlDistube);
+    }
+
+    const { format, ytdl } = result;
 
     if (!format) {
       return res.status(404).json({ message: 'No audio format available' });
     }
 
-    res.setHeader('Content-Type', 'audio/mp4');
+    const contentLength = format.contentLength ? parseInt(format.contentLength) : null;
+    const contentType = format.container === 'mp4' ? 'audio/mp4' : 'audio/webm';
+
+    // Handle Range requests so ExoPlayer can seek
+    const rangeHeader = req.headers['range'];
+    let start = 0, end = contentLength ? contentLength - 1 : undefined;
+    let isPartial = false;
+
+    if (rangeHeader && contentLength) {
+      const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+      if (match) {
+        start = parseInt(match[1]);
+        end = match[2] ? parseInt(match[2]) : contentLength - 1;
+        isPartial = true;
+      }
+    }
+
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'no-cache');
-    
-    if (format.contentLength) {
-      res.setHeader('Content-Length', format.contentLength);
+
+    if (contentLength) {
+      if (isPartial) {
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${contentLength}`);
+        res.setHeader('Content-Length', end - start + 1);
+      } else {
+        res.setHeader('Content-Length', contentLength);
+      }
     }
 
     if (req.method === 'HEAD') {
-      return res.end();
+      return res.status(isPartial ? 206 : 200).end();
     }
 
-    const stream = ytdl(youtubeUrl, { format });
-    
+    const streamOptions = { format };
+    if (isPartial) streamOptions.range = { start, end };
+
+    const stream = ytdl(youtubeUrl, streamOptions);
+
     stream.on('error', (err) => {
-      console.error('[Audio Proxy Error]', err);
+      console.error('[Audio Proxy Error]', err.message);
       if (!res.headersSent) {
         res.status(502).json({ message: 'Stream failed' });
       } else {
@@ -276,18 +318,16 @@ router.all('/audio/:videoId', async (req, res) => {
       }
     });
 
-    req.on('close', () => {
-      stream.destroy();
-    });
-
+    req.on('close', () => stream.destroy());
+    res.status(isPartial ? 206 : 200);
     stream.pipe(res);
 
   } catch (error) {
-    console.error('[Audio Proxy Error]', error);
+    console.error('[Audio Proxy Error]', error.message);
     if (!res.headersSent) {
       return res.status(500).json({ message: 'Failed to stream audio', error: error.message });
     }
   }
 });
 
-module.exports = router;
+module.exports = router;
