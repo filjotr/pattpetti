@@ -216,15 +216,32 @@ router.get('/details/:videoId', async (req, res) => {
   }
 });
 
-const ytdlDistube = require('@distube/ytdl-core');
-let ytdlYbd;
-try { ytdlYbd = require('@ybd-project/ytdl-core'); } catch(e) { ytdlYbd = null; }
+const youtubedlExec = require('youtube-dl-exec');
+const https = require('https');
+const http = require('http');
+
+// Simple in-memory cache for extracted audio URLs (expires in 4 hours)
+const audioUrlCache = new Map();
+const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours
+
+function getCachedUrl(videoId) {
+  const entry = audioUrlCache.get(videoId);
+  if (entry && Date.now() - entry.time < CACHE_TTL) return entry.url;
+  audioUrlCache.delete(videoId);
+  return null;
+}
+
+function setCachedUrl(videoId, url) {
+  audioUrlCache.set(videoId, { url, time: Date.now() });
+}
 
 /* =========================================================
-   AUDIO STREAM PROXY
-   GET /api/youtube/audio/:videoId
+   AUDIO STREAM PROXY  (yt-dlp based)
+   GET  /api/youtube/audio/:videoId
    HEAD /api/youtube/audio/:videoId
-   Streams audio through backend to avoid phone IP being 403-blocked by YouTube.
+   Uses yt-dlp to extract the direct audio URL server-side,
+   then proxies the stream to the client. This avoids the
+   phone's IP being 403-blocked by YouTube CDN.
    ========================================================= */
 
 router.all('/audio/:videoId', async (req, res) => {
@@ -233,101 +250,84 @@ router.all('/audio/:videoId', async (req, res) => {
   }
 
   const { videoId } = req.params;
-  if (!videoId) {
-    return res.status(400).json({ message: 'Video ID required' });
-  }
-
-  const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-  // Helper: try fetching with a given ytdl implementation
-  async function tryStream(ytdl) {
-    const info = await ytdl.getInfo(youtubeUrl);
-    let format = ytdl.chooseFormat(info.formats, {
-      filter: f => f.container === 'mp4' && f.hasAudio && !f.hasVideo,
-    });
-    if (!format) {
-      format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
-    }
-    return { info, format, ytdl };
-  }
+  if (!videoId) return res.status(400).json({ message: 'Video ID required' });
 
   try {
-    let result = null;
-    // Try @ybd-project first (better 403 bypass), fall back to @distube
-    if (ytdlYbd) {
-      try { result = await tryStream(ytdlYbd); } catch(e) {
-        console.warn('[Audio Proxy] ybd failed, falling back to distube:', e.message);
+    // Step 1: Extract direct audio URL using yt-dlp (cached)
+    let audioUrl = getCachedUrl(videoId);
+    if (!audioUrl) {
+      console.log(`[Audio Proxy] Extracting URL for ${videoId}...`);
+      const output = await youtubedlExec(`https://www.youtube.com/watch?v=${videoId}`, {
+        format: 'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio',
+        getUrl: true,
+        noPlaylist: true,
+      });
+      // output is either a string URL or may have newlines
+      audioUrl = (typeof output === 'string' ? output : output.stdout || '').trim().split('\n')[0];
+      if (!audioUrl || !audioUrl.startsWith('http')) {
+        return res.status(502).json({ message: 'Could not extract audio URL' });
       }
-    }
-    if (!result) {
-      result = await tryStream(ytdlDistube);
-    }
-
-    const { format, ytdl } = result;
-
-    if (!format) {
-      return res.status(404).json({ message: 'No audio format available' });
+      setCachedUrl(videoId, audioUrl);
+      console.log(`[Audio Proxy] URL extracted for ${videoId}`);
     }
 
-    const contentLength = format.contentLength ? parseInt(format.contentLength) : null;
-    const contentType = format.container === 'mp4' ? 'audio/mp4' : 'audio/webm';
+    // Step 2: Proxy the audio stream from YouTube CDN → client
+    // Forward the Range header if present (needed for seeking in ExoPlayer)
+    const proxyHeaders = {
+      'User-Agent': 'com.google.android.youtube/18.43.45 (Linux; U; Android 13; gzip)',
+    };
+    if (req.headers['range']) {
+      proxyHeaders['Range'] = req.headers['range'];
+    }
 
-    // Handle Range requests so ExoPlayer can seek
-    const rangeHeader = req.headers['range'];
-    let start = 0, end = contentLength ? contentLength - 1 : undefined;
-    let isPartial = false;
+    const parsedUrl = new URL(audioUrl);
+    const transport = parsedUrl.protocol === 'https:' ? https : http;
 
-    if (rangeHeader && contentLength) {
-      const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
-      if (match) {
-        start = parseInt(match[1]);
-        end = match[2] ? parseInt(match[2]) : contentLength - 1;
-        isPartial = true;
+    const ytReq = transport.request(
+      audioUrl,
+      { headers: proxyHeaders, method: req.method },
+      (ytRes) => {
+        // Pass through status and headers
+        const status = ytRes.statusCode;
+        const forwardHeaders = [
+          'content-type', 'content-length', 'content-range',
+          'accept-ranges', 'cache-control',
+        ];
+        forwardHeaders.forEach(h => {
+          if (ytRes.headers[h]) res.setHeader(h, ytRes.headers[h]);
+        });
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.writeHead(status);
+
+        if (req.method === 'HEAD') {
+          return res.end();
+        }
+        ytRes.pipe(res);
+        req.on('close', () => ytRes.destroy());
       }
-    }
+    );
 
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'no-cache');
-
-    if (contentLength) {
-      if (isPartial) {
-        res.setHeader('Content-Range', `bytes ${start}-${end}/${contentLength}`);
-        res.setHeader('Content-Length', end - start + 1);
-      } else {
-        res.setHeader('Content-Length', contentLength);
+    ytReq.on('error', (err) => {
+      console.error('[Audio Proxy] Stream error:', err.message);
+      // If the cached URL expired (403), purge cache and tell client to retry
+      if (err.message.includes('403') || err.message.includes('ECONNRESET')) {
+        audioUrlCache.delete(videoId);
       }
-    }
-
-    if (req.method === 'HEAD') {
-      return res.status(isPartial ? 206 : 200).end();
-    }
-
-    const streamOptions = { format };
-    if (isPartial) streamOptions.range = { start, end };
-
-    const stream = ytdl(youtubeUrl, streamOptions);
-
-    stream.on('error', (err) => {
-      console.error('[Audio Proxy Error]', err.message);
-      if (!res.headersSent) {
-        res.status(502).json({ message: 'Stream failed' });
-      } else {
-        res.end();
-      }
+      if (!res.headersSent) res.status(502).json({ message: 'Upstream stream error' });
     });
 
-    req.on('close', () => stream.destroy());
-    res.status(isPartial ? 206 : 200);
-    stream.pipe(res);
+    ytReq.end();
 
   } catch (error) {
-    console.error('[Audio Proxy Error]', error.message);
+    console.error('[Audio Proxy] Error:', error.message);
+    // Purge bad cache entry
+    audioUrlCache.delete(videoId);
     if (!res.headersSent) {
       return res.status(500).json({ message: 'Failed to stream audio', error: error.message });
     }
   }
 });
 
-module.exports = router;
+module.exports = router;
+
+
