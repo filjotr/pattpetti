@@ -257,11 +257,18 @@ router.all('/audio/:videoId', async (req, res) => {
     let audioUrl = getCachedUrl(videoId);
     if (!audioUrl) {
       console.log(`[Audio Proxy] Extracting URL for ${videoId}...`);
+      
+      // Use android_embedded client which has lower rate-limiting from YouTube
       const output = await youtubedlExec(`https://www.youtube.com/watch?v=${videoId}`, {
         format: 'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio',
         getUrl: true,
         noPlaylist: true,
+        extractorArgs: 'youtube:player_client=android_embedded',
+        addHeader: [
+          'User-Agent:com.google.android.youtube/18.43.45 (Linux; U; Android 13; gzip)',
+        ],
       });
+      
       // output is either a string URL or may have newlines
       audioUrl = (typeof output === 'string' ? output : output.stdout || '').trim().split('\n')[0];
       if (!audioUrl || !audioUrl.startsWith('http')) {
@@ -270,6 +277,7 @@ router.all('/audio/:videoId', async (req, res) => {
       setCachedUrl(videoId, audioUrl);
       console.log(`[Audio Proxy] URL extracted for ${videoId}`);
     }
+
 
     // Step 2: Proxy the audio stream from YouTube CDN → client
     // Forward the Range header if present (needed for seeking in ExoPlayer)
