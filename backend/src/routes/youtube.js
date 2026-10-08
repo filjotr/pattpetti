@@ -217,7 +217,6 @@ router.get('/details/:videoId', async (req, res) => {
 });
 
 const youtubedlExec = require('youtube-dl-exec');
-const https = require('https');
 const http = require('http');
 
 // Simple in-memory cache for extracted audio URLs (expires in 4 hours)
