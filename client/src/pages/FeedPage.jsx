@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import MusicFeedCard from '../components/MusicFeedCard';
 import CommentSheet from '../components/CommentSheet';
+import AdsterraBanner, { AdsterraDirectLink } from '../components/AdsterraBanner';
 import { useFeed } from '../context/FeedContext';
 import { useSocial } from '../context/SocialContext';
 import { useAuth } from '../context/AuthContext';
@@ -100,9 +101,30 @@ export default function FeedPage() {
           </div>
         ) : (
           songs.map((song, i) => (
-            <div key={song.videoId + i} data-idx={i}>
-              <MusicFeedCard song={song} isActive={i === activeIndex} index={i} onOpenComment={setActiveCommentSong} />
-            </div>
+            <React.Fragment key={song.videoId + i}>
+              <div data-idx={i}>
+                <MusicFeedCard song={song} isActive={i === activeIndex} index={i} onOpenComment={setActiveCommentSong} />
+              </div>
+              {/* Adsterra Banner — every 4 songs */}
+              {(i + 1) % 4 === 0 && (
+                <div
+                  style={{
+                    height: 'calc(var(--vh, 1vh) * 10)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.6)',
+                    backdropFilter: 'blur(10px)',
+                    gap: 6,
+                    padding: '8px 0',
+                  }}
+                >
+                  <AdsterraDirectLink label="Sponsored · Tap to explore" />
+                  <AdsterraBanner />
+                </div>
+              )}
+            </React.Fragment>
           ))
         )}
 
